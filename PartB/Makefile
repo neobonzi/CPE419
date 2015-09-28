@@ -2,11 +2,17 @@ NVFLAGS=-O3 -g -ccbin g++ -m64 -gencode arch=compute_20,code=sm_20 -gencode arch
 # list .c and .cu source files here
 SRCFILES=matrixmul.cu 
 
-all:	mm_cuda	
+all:	single 
 
-mm_cuda: $(SRCFILES) 
-	nvcc $(NVFLAGS) -o mm_cuda $^ 
+single:  $(SRCFILES) 
+	nvcc -D FLOAT=float $(NVFLAGS) -o mm_cuda $^ 
+ 
+double: $(SRCFILES) 
+	nvcc -D FLOAT=double $(NVFLAGS) -o mm_cuda $^  
 
+#mm_cuda: $(SRCFILES) 
+#	nvcc $(NVFLAGS) -o mm_cuda $^ 
+ 
 clean: 
 	rm -f *.o mm_cuda
 
