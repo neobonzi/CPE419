@@ -27,6 +27,9 @@ static void HandleError( cudaError_t err,
 
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
 
+/**
+* This function will take a filename and map its contents into memory for faster access.
+*/
 int mapFileToMemory(char* fName, Matrix *mat){
   int fd, size;
   char *map;
@@ -56,6 +59,9 @@ int mapFileToMemory(char* fName, Matrix *mat){
   return  0;
 }
 
+/**
+* This function will un-map a file that was previously mapped into memory.
+*/
 int unmapFile(Matrix *mat){
   if (munmap(mat->mmapFileLoc, mat->mmapFileSize) == -1) {
   	perror("Error un-mapping the file");
@@ -63,6 +69,30 @@ int unmapFile(Matrix *mat){
   }
   
   return 0;
+}
+
+/**
+* Write results to a file named "results.out"
+*/
+void writeOutput(Matrix *mat){
+  FILE* ofp;
+  ofp = fopen("result.out","w");
+  if(ofp == NULL) {
+    perror("Could not open result.out to write results");
+    exit(1);
+  }
+  
+  int i,j;
+  for(i = 0; i < mat->rows; i++){
+    for(j = 0; j < mat->cols; j++){
+      fprintf(ofp, "%.2f ", p->arr[i*p->cols+j]);
+    }
+    // print newline for all rows
+    fprintf(ofp, "\n");
+  }
+  
+  // close output file pointer
+  fclose(ofp);
 }
 
 int main( int argc, char **argv ) {
