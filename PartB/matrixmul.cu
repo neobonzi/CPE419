@@ -85,7 +85,7 @@ void writeOutput(Matrix *mat){
   int i,j;
   for(i = 0; i < mat->rows; i++){
     for(j = 0; j < mat->cols; j++){
-      fprintf(ofp, "%.2f ", p->arr[i*p->cols+j]);
+      fprintf(ofp, "%.2f ", mat->arr[i*mat->cols+j]);
     }
     // print newline for all rows
     fprintf(ofp, "\n");
@@ -93,6 +93,29 @@ void writeOutput(Matrix *mat){
   
   // close output file pointer
   fclose(ofp);
+}
+
+/**
+* If array holding matrix data is not big enough create a new one twice as big.
+* Copy old array data to new array, and free old array from memory.
+*/
+void doubleArraySize(Matrix *mat) {
+  // malloc new array, double the size of previous array
+  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * mat->rows * mat->cols * 2);
+  
+  if (newArray == NULL) {
+    perror("Error, couldn't allocate space for array\n");
+    exit(1);
+  }
+  
+  // copy old array to newArray
+  newArray = (FLOAT*) memcpy(newArray, mat->arr, sizeof(FLOAT) * mat->rows * mat->cols);
+  
+  // free the old array
+  free(mat->arr);
+  
+  // set pointer to new array in memory
+  mat->arr = newArray;
 }
 
 int main( int argc, char **argv ) {
