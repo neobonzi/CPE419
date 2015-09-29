@@ -183,6 +183,27 @@ void storeMatrixToArray(Matrix *mat){
   mat->rows = numRows;
 }
 
+int errorCheckMatrices(Matrix *mat1, Matrix *mat2){
+  // check that matrix1 is square
+  if(mat1->rows != mat1->cols){
+    printf("Error: matrix1 is not square\n");
+    exit(1);
+  }
+  
+  // check that matrix2 is square
+  if(mat2->rows != mat2->cols){
+    printf("Error: matrix2 is not square\n");
+    exit(1);
+  }
+  
+  // check that matrix1 is same size as matrix2
+  if(mat1->rows != mat2->cols){
+    printf("Error: matrices are not compatible size\n");
+    exit(1);
+  }
+  
+  return 0;
+}
 void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
   int size = mat1->cols * mat1->cols * sizeof(FLOAT);
   FLOAT *Md, *Nd, *Pd;
@@ -229,13 +250,9 @@ int main( int argc, char **argv ) {
   storeMatrixToArray(pMat2);
   unmapFile(pMat2);
 
-  // check that matrix is square
-  if(pMat1->rows != pMat2->rows){
-    printf("Error: matrix is not square\n");
-    exit(1);
-  }
+  errorCheckMatrices(pMat1, pMat2);
  
-  // Setup matrix3
+  // Matrix3 setup and compute
   Matrix m3;
   Matrix *pMat3 = &m3;
   initMatrixArray(pMat3, pMat1->rows, pMat1->cols);
