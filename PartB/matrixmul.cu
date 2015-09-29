@@ -197,7 +197,7 @@ int errorCheckMatrices(Matrix *mat1, Matrix *mat2){
   }
   
   // check that matrix1 is same size as matrix2
-  if(mat1->rows != mat2->cols){
+  if(mat1->cols != mat2->rows){
     printf("Error: matrices are not compatible size\n");
     exit(1);
   }
@@ -259,6 +259,7 @@ int main( int argc, char **argv ) {
   matrixMulOnDevice(pMat1, pMat2, pMat3);
   writeOutput(pMat3);
   
+  // Free allocated memory
   free(pMat1->arr);
   free(pMat2->arr);
   free(pMat3->arr);
