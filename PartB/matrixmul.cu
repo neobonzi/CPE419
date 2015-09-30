@@ -45,8 +45,8 @@ __global__ void MatMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width, int hei
     for(int k=0; k < width; k++)
     {
         accum += Md[row * width + k] * Nd[k * width + col];
-        Pd[row * width + col] = accum;
     }
+    Pd[row * width + col] = accum;
 }
 
 /**
