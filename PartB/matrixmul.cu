@@ -8,6 +8,7 @@
 
 #define DEF_ROWS 2
 #define DEF_COLS 2
+#define TILE_WIDTH 
 
 // FLOAT will either be a float or double depending on what user decides. (could use a better name)
 typedef struct {
@@ -29,6 +30,23 @@ static void HandleError( cudaError_t err,
 }
 
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
+
+/**
+ * This function will multiply a single row and column in a matrix
+ */ 
+__global__ void MatMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width, int height) {
+    //Get row and col in matrix that we are responsible for
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    float accum = 0;
+    //Iterate through 
+    for(int k=0; k < width; k++)
+    {
+        accum += Md[row * width + k] * Nd[k * width + col];
+        Pd[row * width + col] = accum;
+    }
+}
 
 /**
 * This function will take a filename and map its contents into memory for faster access.
@@ -186,13 +204,13 @@ void storeMatrixToArray(Matrix *mat){
 int errorCheckMatrices(Matrix *mat1, Matrix *mat2){
   // check that matrix1 is square
   if(mat1->rows != mat1->cols){
-    printf("Error: matrix1 is not square\n");
+    printf("Error: matrix1 is not square %dx%d\n", mat1->rows, mat1->cols);
     exit(1);
   }
   
   // check that matrix2 is square
   if(mat2->rows != mat2->cols){
-    printf("Error: matrix2 is not square\n");
+    printf("Error: matrix2 is not square %dx%d\n",mat2->rows, mat2->cols);
     exit(1);
   }
   
@@ -219,8 +237,12 @@ void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
   // Allocate space for Matrix3 on GPU
   HANDLE_ERROR( cudaMalloc(&Pd, size) );
   
-  // Call GPU Matrix multiply function here.
-    // Not yet implemented
+  // Each block only holds 32 rows & cols so numBlocks in any direciton
+  // i.e. numBlocksX = matrixWidth / 32
+  dim3 dimGrid(mat1->cols/32, mat1->cols/32);
+  // 1024 threads per blocks, square in our case so all must be 32x32
+  dim3 dimBlock(32, 32);
+  MatMulKernel<<<dimGrid, dimBlock>>>(Md, Nd, Pd, mat1->cols, mat2->cols);
     
   // Copy results back to CPU
   HANDLE_ERROR( cudaMemcpy(mat3->arr, Pd, size, cudaMemcpyDeviceToHost) );
