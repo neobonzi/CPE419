@@ -2,7 +2,7 @@ CPE 419 Project #1 Part B Report
 
 How many threads can be simultaneously executing on GeForce 980 GPU which contains 16 Streaming Multiprocessors (SMs)?
 
-2^15 registers per SM * 2^4 SM's / 15 registers required per thread = 34,952 threads possibly executing at one time.
+If there are 2^15 registers per SM and our kernel requires 15 registers per thread execution then we could possibly have 2^15 / 15 = 2184 threads running simultaneously on a single SM. However, there is a limit of 2^10 threads per SM so we are limited by the amount of threads available, not the registers. Following this logic, we would only be allowed 1024 threads per SM * 16 available SM's = 16384 threads executing at once.
 
 Sample Runs:
 
