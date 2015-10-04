@@ -8,7 +8,7 @@
 
 #define DEF_ROWS 2
 #define DEF_COLS 2
-#define TILE_WIDTH
+#define TILEWIDTH
 
 // FLOAT will either be a float or double depending on what user decides. (could use a better name)
 typedef struct {
@@ -34,7 +34,7 @@ static void HandleError( cudaError_t err,
 
 /**
  * This function will multiply a single row and column in a matrix
- */
+
 __global__ void MatMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width, int height) {
     //Get row and col in matrix that we are responsible for
     int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -48,6 +48,33 @@ __global__ void MatMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width, int hei
     }
     Pd[row * width + col] = accum;
 }
+ */
+
+ /**
+  * This function will multiply using a tiling algorithm
+  */
+__global__ void matMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width) {
+  __shared__ FLOAT Mds[TILEWIDTH][TILEWIDTH];
+  __shared__ FLOAT Nds[TILEWIDTH][TILEWIDTH];
+
+  int row = blockIdx.y * TILEWIDTH + threadIdx.y;
+  int col = blockIdx.x * TILEWIDTH + threadIdx.x;
+  FLOAT accum = 0;
+
+  int m, k;
+  for(m = 0; m < width / TILEWIDTH; m++){
+    Mds[threadIdx.y][threadIdx.x] = Md[row * width + (m + TILEWIDTH + threadIdx.x)];
+    Nds[threadIdx.y][threadIdx.x] = Nd[col + (m * TILEWIDTH + threadIdx.y) * width];
+    __synchronize();
+
+    for(k = 0; k < TILEWIDTH; k++) {
+      accum += Mds[threadIdx.y][k] * Nds[k][threadIdx.x];
+    }
+    __synchronize();
+  }
+  Pd[row * width + col] = accum;
+}
+
 
 /**
 * This function will take a filename and map its contents into memory for faster access.

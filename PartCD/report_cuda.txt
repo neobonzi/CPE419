@@ -1,15 +1,3 @@
-CPE 419 Project #1 Part B Report
+CPE 419 Project #1 Part C/Part D Report
 
-How many threads can be simultaneously executing on GeForce 980 GPU which contains 16 Streaming Multiprocessors (SMs)?
-
-If there are 2^15 registers per SM and our kernel requires 15 registers per thread execution then we could possibly have 2^15 / 15 = 2184 threads running simultaneously on a single SM. However, there is a limit of 2^10 threads per SM so we are limited by the amount of threads available, not the registers. Following this logic, we would only be allowed 1024 threads per SM * 16 available SM's = 16384 threads executing at once.
-
-Sample Runs:
-
-  Run # |   Real   |   User   |    Sys   | 
-------------------------------------------
-    1   |  2.316s  |  1.926s  |  0.244s  |
-------------------------------------------
-    2   |  2.305s  |  1.921s  |  0.239s  |
-------------------------------------------
-    3   |  2.333s  |  1.930s  |  0.240s  |
+What is the CGMA (compute to global memory access) ratio for your code? This is the number of floating-point calculations performed for each access to the global memory within a region of a CUDA program. How does this compare to the CGMA ratio for your solution to Part B?
