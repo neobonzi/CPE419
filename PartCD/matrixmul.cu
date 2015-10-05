@@ -8,12 +8,14 @@
 
 #define DEF_ROWS 2
 #define DEF_COLS 2
-#define TILEWIDTH
+#define TILEWIDTH 32
 
 // FLOAT will either be a float or double depending on what user decides. (could use a better name)
 typedef struct {
   int rows;
   int cols;
+  int oldRows;
+  int oldCols;
   FLOAT *arr;          // array of data
   int mmapFileSize;    // size of file mapped to memory
   char *mmapFileLoc;   // pointer to file mapped to memory
@@ -220,7 +222,7 @@ void storeMatrixToArray(Matrix *mat){
     } else if(mat->mmapFileLoc[mmapIdx] == '\n') {
       if (countCols) {
         mat->cols = numCols;
-        countCols = 0;    // disable counting columns
+        countCols = 0;    // disable TILE_WIDTH - (mat->cols % TILE_WIDTH),counting columns
       }
       numRows++;
     }
@@ -270,14 +272,46 @@ void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
 
   // Each block only holds 32 rows & cols so numBlocks in any direciton
   // i.e. numBlocksX = matrixWidth / 32
-  dim3 dimGrid(mat1->cols/32, mat1->cols/32);
+  dim3 dimGrid(mat1->cols/TILE_WIDTH, mat1->cols/TILE_WIDTH);
   // 1024 threads per blocks, square in our case so all must be 32x32
-  dim3 dimBlock(32, 32);
+  dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
   MatMulKernel<<<dimGrid, dimBlock>>>(Md, Nd, Pd, mat1->cols, mat2->cols);
 
   // Copy results back to CPU
   HANDLE_ERROR( cudaMemcpy(mat3->arr, Pd, size, cudaMemcpyDeviceToHost) );
   HANDLE_ERROR( cudaFree(Pd) );
+}
+
+void padMatrix(Matrix *mat) {
+  int numRows = mat->rows + (TILE_WIDTH - (mat->rows % TILE_WIDTH));
+  int numCols = mat->cols + (TILE_WIDTH - (mat->cols % TILE_WIDTH));
+  FLOAT newArray = (FLOAT*) calloc(numRows * numCols, sizeof(FLOAT));
+
+  // if (mat->rows % TILE_WIDTH != 0) {
+  //   // pad rows
+  //   int i;
+  //   for(i = 0; i < mat->cols; i++){
+  //     memcpy(newArray + numRows * i, mat->arr + mat->rows*i, sizeof(FLOAT) * mat->rows);
+  //   }
+  //   // update to new amont of rows
+  // }
+  if (mat->cols % TILE_WIDTH != 0) {
+    // pad cols
+    int i;
+    for(i = 0; i < mat->rows; i++){
+      memcpy(newArray + numCols * i, mat->arr + mat->cols*i, sizeof(FLOAT) * mat->cols);
+    }
+  }
+
+  mat->oldRows = mat->rows;
+  mat->oldCols = mat->cols;
+  mat->rows = numRows;
+  mat->cols = numCols;
+
+  free(mat->arr);
+
+  mat->arr = newArray;
+
 }
 
 int main( int argc, char **argv ) {
