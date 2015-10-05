@@ -8,7 +8,7 @@
 
 #define DEF_ROWS 2
 #define DEF_COLS 2
-#define TILEWIDTH 32
+#define TILE_WIDTH 4
 
 // FLOAT will either be a float or double depending on what user decides. (could use a better name)
 typedef struct {
@@ -33,50 +33,6 @@ static void HandleError( cudaError_t err,
 }
 
 #define HANDLE_ERROR( err ) (HandleError( err, __FILE__, __LINE__ ))
-
-/**
- * This function will multiply a single row and column in a matrix
-
-__global__ void MatMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width, int height) {
-    //Get row and col in matrix that we are responsible for
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-    float accum = 0;
-    //Iterate through
-    for(int k=0; k < width; k++)
-    {
-        accum += Md[row * width + k] * Nd[k * width + col];
-    }
-    Pd[row * width + col] = accum;
-}
- */
-
- /**
-  * This function will multiply using a tiling algorithm
-  */
-__global__ void matMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width) {
-  __shared__ FLOAT Mds[TILEWIDTH][TILEWIDTH];
-  __shared__ FLOAT Nds[TILEWIDTH][TILEWIDTH];
-
-  int row = blockIdx.y * TILEWIDTH + threadIdx.y;
-  int col = blockIdx.x * TILEWIDTH + threadIdx.x;
-  FLOAT accum = 0;
-
-  int m, k;
-  for(m = 0; m < width / TILEWIDTH; m++){
-    Mds[threadIdx.y][threadIdx.x] = Md[row * width + (m + TILEWIDTH + threadIdx.x)];
-    Nds[threadIdx.y][threadIdx.x] = Nd[col + (m * TILEWIDTH + threadIdx.y) * width];
-    __syncthreads();
-
-    for(k = 0; k < TILEWIDTH; k++) {
-      accum += Mds[threadIdx.y][k] * Nds[k][threadIdx.x];
-    }
-    __syncthreads();
-  }
-  Pd[row * width + col] = accum;
-}
-
 
 /**
 * This function will take a filename and map its contents into memory for faster access.
@@ -144,6 +100,21 @@ void writeOutput(Matrix *mat){
 
   // close output file pointer
   fclose(ofp);
+}
+
+/**
+* Print the contents of matrix to stdout for debugging
+*/
+
+void printMatrix(Matrix *mat) {
+  int i,j;
+  for(i = 0; i < mat->rows; i++){
+    for(j = 0; j < mat->cols; j++){
+      printf("%.2f ", mat->arr[i*mat->cols+j]);
+    }
+    // print newline for all rows
+    printf("\n");
+  }
 }
 
 /**
@@ -243,6 +214,32 @@ int errorCheckMatrices(Matrix *mat1, Matrix *mat2){
 
   return 0;
 }
+
+/**
+ * This function will multiply using a tiling algorithm
+ */
+__global__ void matMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width) {
+ __shared__ FLOAT Mds[TILE_WIDTH][TILE_WIDTH];
+ __shared__ FLOAT Nds[TILE_WIDTH][TILE_WIDTH];
+
+ int row = blockIdx.y * TILE_WIDTH + threadIdx.y;
+ int col = blockIdx.x * TILE_WIDTH + threadIdx.x;
+ FLOAT accum = 0;
+
+ int m, k;
+ for(m = 0; m < width / TILE_WIDTH; m++){
+   Mds[threadIdx.y][threadIdx.x] = Md[row * width + (m + TILE_WIDTH + threadIdx.x)];
+   Nds[threadIdx.y][threadIdx.x] = Nd[col + (m * TILE_WIDTH + threadIdx.y) * width];
+   __syncthreads();
+
+   for(k = 0; k < TILE_WIDTH; k++) {
+     accum += Mds[threadIdx.y][k] * Nds[k][threadIdx.x];
+   }
+   __syncthreads();
+ }
+ Pd[row * width + col] = accum;
+}
+
 void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
   int size = mat1->cols * mat1->cols * sizeof(FLOAT);
   FLOAT *Md, *Nd, *Pd;
@@ -258,12 +255,12 @@ void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
   // Allocate space for Matrix3 on GPU
   HANDLE_ERROR( cudaMalloc(&Pd, size) );
 
-  // Each block only holds 32 rows & cols so numBlocks in any direciton
-  // i.e. numBlocksX = matrixWidth / 32
+  // Each block...
   dim3 dimGrid(mat1->cols/TILE_WIDTH, mat1->cols/TILE_WIDTH);
-  // 1024 threads per blocks, square in our case so all must be 32x32
+
+  //
   dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
-  MatMulKernel<<<dimGrid, dimBlock>>>(Md, Nd, Pd, mat1->cols, mat2->cols);
+  matMulKernel<<<dimGrid, dimBlock>>>(Md, Nd, Pd, mat1->cols);
 
   // Copy results back to CPU
   HANDLE_ERROR( cudaMemcpy(mat3->arr, Pd, size, cudaMemcpyDeviceToHost) );
@@ -273,16 +270,8 @@ void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
 void padMatrix(Matrix *mat) {
   int numRows = mat->rows + (TILE_WIDTH - (mat->rows % TILE_WIDTH));
   int numCols = mat->cols + (TILE_WIDTH - (mat->cols % TILE_WIDTH));
-  FLOAT newArray = (FLOAT*) calloc(numRows * numCols, sizeof(FLOAT));
+  FLOAT *newArray = (FLOAT*) calloc(numRows * numCols, sizeof(FLOAT));
 
-  // if (mat->rows % TILE_WIDTH != 0) {
-  //   // pad rows
-  //   int i;
-  //   for(i = 0; i < mat->cols; i++){
-  //     memcpy(newArray + numRows * i, mat->arr + mat->rows*i, sizeof(FLOAT) * mat->rows);
-  //   }
-  //   // update to new amont of rows
-  // }
   if (mat->cols % TILE_WIDTH != 0) {
     // pad cols
     int i;
@@ -291,15 +280,19 @@ void padMatrix(Matrix *mat) {
     }
   }
 
+  // set oldRows and oldCols
   mat->oldRows = mat->rows;
   mat->oldCols = mat->cols;
+
+  // set new rows and cols
   mat->rows = numRows;
   mat->cols = numCols;
 
+  // free old array
   free(mat->arr);
 
+  // link new array
   mat->arr = newArray;
-
 }
 
 int main( int argc, char **argv ) {
@@ -317,6 +310,7 @@ int main( int argc, char **argv ) {
   storeMatrixToArray(pMat1);
   unmapFile(pMat1);
 
+
   // Setup matrix2
   Matrix m2;
   Matrix *pMat2 = &m2;
@@ -325,7 +319,13 @@ int main( int argc, char **argv ) {
   storeMatrixToArray(pMat2);
   unmapFile(pMat2);
 
+  // check for errors
   errorCheckMatrices(pMat1, pMat2);
+
+  // pad matrices 1 and 2 to multiples of TILE_WIDTH
+  padMatrix(pMat1);
+  printMatrix(pMat1);
+  //padMatrix(pMat2);
 
   // Matrix3 setup and compute
   Matrix m3;
