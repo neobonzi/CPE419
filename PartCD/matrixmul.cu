@@ -67,12 +67,12 @@ __global__ void matMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width) {
   for(m = 0; m < width / TILEWIDTH; m++){
     Mds[threadIdx.y][threadIdx.x] = Md[row * width + (m + TILEWIDTH + threadIdx.x)];
     Nds[threadIdx.y][threadIdx.x] = Nd[col + (m * TILEWIDTH + threadIdx.y) * width];
-    __synchronize();
+    __syncthreads();
 
     for(k = 0; k < TILEWIDTH; k++) {
       accum += Mds[threadIdx.y][k] * Nds[k][threadIdx.x];
     }
-    __synchronize();
+    __syncthreads();
   }
   Pd[row * width + col] = accum;
 }
@@ -134,9 +134,9 @@ void writeOutput(Matrix *mat){
   }
 
   int i,j;
-  for(i = 0; i < mat->rows; i++){
-    for(j = 0; j < mat->cols; j++){
-      fprintf(ofp, "%.2f ", mat->arr[i*mat->cols+j]);
+  for(i = 0; i < mat->oldRows; i++){
+    for(j = 0; j < mat->oldCols; j++){
+      fprintf(ofp, "%.2f ", mat->arr[i*mat->oldCols+j]);
     }
     // print newline for all rows
     fprintf(ofp, "\n");
@@ -235,18 +235,6 @@ void storeMatrixToArray(Matrix *mat){
 }
 
 int errorCheckMatrices(Matrix *mat1, Matrix *mat2){
-  // check that matrix1 is square
-  if(mat1->rows != mat1->cols){
-    printf("Error: matrix1 is not square %dx%d\n", mat1->rows, mat1->cols);
-    exit(1);
-  }
-
-  // check that matrix2 is square
-  if(mat2->rows != mat2->cols){
-    printf("Error: matrix2 is not square %dx%d\n",mat2->rows, mat2->cols);
-    exit(1);
-  }
-
   // check that matrix1 is same size as matrix2
   if(mat1->cols != mat2->rows){
     printf("Error: matrices are not compatible size\n");
