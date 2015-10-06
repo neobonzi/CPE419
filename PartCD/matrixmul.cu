@@ -8,7 +8,7 @@
 
 #define DEF_ROWS 2
 #define DEF_COLS 2
-#define TILE_WIDTH 2
+#define TILE_WIDTH 32
 
 // FLOAT will either be a float or double depending on what user decides. (could use a better name)
 typedef struct {
@@ -334,7 +334,7 @@ void newArraySetup(Matrix *mat, int numRows, int numCols) {
 void padMatrix(Matrix *mat, Matrix *mat2) {
   int numRows, numCols;
   // pick bigger array to pad, copy same size for smaller array
-  if (mat->size > mat2->size) {
+  if (mat->rows*mat->cols > mat2->rows*mat2->cols) {
     numRows = mat->rows + (TILE_WIDTH - (mat->rows % TILE_WIDTH));
     numCols = mat->cols + (TILE_WIDTH - (mat->cols % TILE_WIDTH));
   } else {
@@ -352,8 +352,6 @@ void padMatrix(Matrix *mat, Matrix *mat2) {
   newArraySetup(mat, numRows, numCols);
   newArraySetup(mat2, numRows, numCols);
 }
-
-
 
 int main( int argc, char **argv ) {
   // exit if not enough arguments
@@ -384,14 +382,16 @@ int main( int argc, char **argv ) {
 
   // pad matrices 1 and 2 to multiples of TILE_WIDTH
   padMatrix(pMat1, pMat2);
-  printMatrix(pMat1);
+  //printMatrix(pMat1);
   //padMatrix(pMat2);
-  printMatrix(pMat2);
+  //printMatrix(pMat2);
   
   // Matrix3 setup and compute
   Matrix m3;
   Matrix *pMat3 = &m3;
   initAnswerMatrix(pMat1, pMat2, pMat3);
+  printf("size mat1: %dx%d\n", pMat1->rows, pMat1->cols);
+  printf("size mat2: %dx%d\n", pMat2->rows, pMat2->cols);
   matrixMulOnDevice(pMat1, pMat2, pMat3);
   writeOutput(pMat3);
 
