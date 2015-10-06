@@ -261,23 +261,6 @@ __global__ void matMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width) {
  Pd[row * width + col] = accum;
 }
 
-/**
- * This function will multiply a single row and column in a matrix
- */
-// __global__ void matMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width) {
-//     //Get row and col in matrix that we are responsible for
-//     int row = blockIdx.y * blockDim.y + threadIdx.y;
-//     int col = blockIdx.x * blockDim.x + threadIdx.x;
-// 
-//     float accum = 0;
-//     //Iterate through
-//     for(int k=0; k < width; k++)
-//     {
-//         accum += Md[row * width + k] * Nd[k * width + col];
-//     }
-//     Pd[row * width + col] = accum;
-// }
-
 void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
   int size = mat1->cols * mat2->rows * sizeof(FLOAT);
   FLOAT *Md, *Nd, *Pd;
@@ -368,7 +351,6 @@ int main( int argc, char **argv ) {
   storeMatrixToArray(pMat1);
   unmapFile(pMat1);
 
-
   // Setup matrix2
   Matrix m2;
   Matrix *pMat2 = &m2;
@@ -382,16 +364,11 @@ int main( int argc, char **argv ) {
 
   // pad matrices 1 and 2 to multiples of TILE_WIDTH
   padMatrix(pMat1, pMat2);
-  //printMatrix(pMat1);
-  //padMatrix(pMat2);
-  //printMatrix(pMat2);
   
   // Matrix3 setup and compute
   Matrix m3;
   Matrix *pMat3 = &m3;
   initAnswerMatrix(pMat1, pMat2, pMat3);
-  printf("size mat1: %dx%d\n", pMat1->rows, pMat1->cols);
-  printf("size mat2: %dx%d\n", pMat2->rows, pMat2->cols);
   matrixMulOnDevice(pMat1, pMat2, pMat3);
   writeOutput(pMat3);
 
