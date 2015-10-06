@@ -8,7 +8,7 @@
 
 #define DEF_ROWS 2
 #define DEF_COLS 2
-#define TILE_WIDTH 4
+#define TILE_WIDTH 2
 
 // FLOAT will either be a float or double depending on what user decides. (could use a better name)
 typedef struct {
@@ -239,44 +239,44 @@ int errorCheckMatrices(Matrix *mat1, Matrix *mat2){
 /**
  * This function will multiply using a tiling algorithm
  */
-// __global__ void matMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width) {
-//  __shared__ FLOAT Mds[TILE_WIDTH][TILE_WIDTH];
-//  __shared__ FLOAT Nds[TILE_WIDTH][TILE_WIDTH];
-// 
-//  int row = blockIdx.y * TILE_WIDTH + threadIdx.y;
-//  int col = blockIdx.x * TILE_WIDTH + threadIdx.x;
-//  FLOAT accum = 0;
-// 
-//  int m, k;
-//  for(m = 0; m < width / TILE_WIDTH; m++){
-//    Mds[threadIdx.y][threadIdx.x] = Md[row * width + (m + TILE_WIDTH + threadIdx.x)];
-//    Nds[threadIdx.y][threadIdx.x] = Nd[col + (m * TILE_WIDTH + threadIdx.y) * width];
-//    __syncthreads();
-// 
-//    for(k = 0; k < TILE_WIDTH; k++) {
-//      accum += Mds[threadIdx.y][k] * Nds[k][threadIdx.x];
-//    }
-//    __syncthreads();
-//  }
-//  Pd[row * width + col] = accum;
-// }
+__global__ void matMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width) {
+ __shared__ FLOAT Mds[TILE_WIDTH][TILE_WIDTH];
+ __shared__ FLOAT Nds[TILE_WIDTH][TILE_WIDTH];
+
+ int row = blockIdx.y * TILE_WIDTH + threadIdx.y;
+ int col = blockIdx.x * TILE_WIDTH + threadIdx.x;
+ FLOAT accum = 0;
+
+ int m, k;
+ for(m = 0; m < width / TILE_WIDTH; m++){
+   Mds[threadIdx.y][threadIdx.x] = Md[row * width + (m * TILE_WIDTH + threadIdx.x)];
+   Nds[threadIdx.y][threadIdx.x] = Nd[col + (m * TILE_WIDTH + threadIdx.y) * width];
+   __syncthreads();
+
+   for(k = 0; k < TILE_WIDTH; k++) {
+     accum += Mds[threadIdx.y][k] * Nds[k][threadIdx.x];
+   }
+   __syncthreads();
+ }
+ Pd[row * width + col] = accum;
+}
 
 /**
  * This function will multiply a single row and column in a matrix
  */
-__global__ void matMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width) {
-    //Get row and col in matrix that we are responsible for
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-    float accum = 0;
-    //Iterate through
-    for(int k=0; k < width; k++)
-    {
-        accum += Md[row * width + k] * Nd[k * width + col];
-    }
-    Pd[row * width + col] = accum;
-}
+// __global__ void matMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width) {
+//     //Get row and col in matrix that we are responsible for
+//     int row = blockIdx.y * blockDim.y + threadIdx.y;
+//     int col = blockIdx.x * blockDim.x + threadIdx.x;
+// 
+//     float accum = 0;
+//     //Iterate through
+//     for(int k=0; k < width; k++)
+//     {
+//         accum += Md[row * width + k] * Nd[k * width + col];
+//     }
+//     Pd[row * width + col] = accum;
+// }
 
 void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
   int size = mat1->cols * mat2->rows * sizeof(FLOAT);
@@ -305,24 +305,12 @@ void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
   HANDLE_ERROR( cudaFree(Pd) );
 }
 
-void padMatrix(Matrix *mat) {
-  int numRows = mat->rows + (TILE_WIDTH - (mat->rows % TILE_WIDTH));
-  int numCols = mat->cols + (TILE_WIDTH - (mat->cols % TILE_WIDTH));
-  
-  // pad to square array
-  if (numRows < numCols)  {
-    numRows = numCols;
-  } else {
-    numCols = numRows;
-  }
-  
+void newArraySetup(Matrix *mat, int numRows, int numCols) {
   FLOAT *newArray = (FLOAT*) calloc(numRows * numCols, sizeof(FLOAT));
 
-  if (mat->cols % TILE_WIDTH != 0) {
-    int i;
-    for(i = 0; i < mat->rows; i++) {
-      memcpy(newArray + numCols * i, mat->arr + mat->cols * i, sizeof(FLOAT) * mat->cols);
-    }
+  int i;
+  for(i = 0; i < mat->rows; i++) {
+    memcpy(newArray + numCols * i, mat->arr + mat->cols * i, sizeof(FLOAT) * mat->cols);
   }
 
   // set oldRows and oldCols
@@ -339,6 +327,33 @@ void padMatrix(Matrix *mat) {
   // link new array
   mat->arr = newArray;
 }
+
+/**
+* Pad both input matrices to be square, same-size, and mulpiles of TILE_WIDTH
+*/
+void padMatrix(Matrix *mat, Matrix *mat2) {
+  int numRows, numCols;
+  // pick bigger array to pad, copy same size for smaller array
+  if (mat->size > mat2->size) {
+    numRows = mat->rows + (TILE_WIDTH - (mat->rows % TILE_WIDTH));
+    numCols = mat->cols + (TILE_WIDTH - (mat->cols % TILE_WIDTH));
+  } else {
+    numRows = mat2->rows + (TILE_WIDTH - (mat2->rows % TILE_WIDTH));
+    numCols = mat2->cols + (TILE_WIDTH - (mat2->cols % TILE_WIDTH));
+  }
+  
+  // pad to square array
+  if (numRows < numCols)  {
+    numRows = numCols;
+  } else {
+    numCols = numRows;
+  }
+  
+  newArraySetup(mat, numRows, numCols);
+  newArraySetup(mat2, numRows, numCols);
+}
+
+
 
 int main( int argc, char **argv ) {
   // exit if not enough arguments
@@ -368,9 +383,9 @@ int main( int argc, char **argv ) {
   errorCheckMatrices(pMat1, pMat2);
 
   // pad matrices 1 and 2 to multiples of TILE_WIDTH
-  padMatrix(pMat1);
+  padMatrix(pMat1, pMat2);
   printMatrix(pMat1);
-  padMatrix(pMat2);
+  //padMatrix(pMat2);
   printMatrix(pMat2);
   
   // Matrix3 setup and compute
