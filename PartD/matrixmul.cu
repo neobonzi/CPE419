@@ -14,8 +14,6 @@
 typedef struct {
   int rows;
   int cols;
-  int oldRows;
-  int oldCols;
   FLOAT *arr;          // array of data
   int mmapFileSize;    // size of file mapped to memory
   char *mmapFileLoc;   // pointer to file mapped to memory
@@ -80,6 +78,7 @@ int unmapFile(Matrix *mat){
 
 /**
 * Write results to a file named "results.out"
+* Data in mat is stored row-major order.
 */
 void writeOutput(Matrix *mat){
   FILE* ofp;
@@ -90,9 +89,34 @@ void writeOutput(Matrix *mat){
   }
 
   int i,j;
-  for(i = 0; i < mat->oldRows; i++){
-    for(j = 0; j < mat->oldCols; j++){
-      fprintf(ofp, "%.2f ", mat->arr[i*mat->cols+j]);
+  for(i = 0; i < mat->rows; i++){
+    for(j = 0; j < mat->cols; j++){
+      fprintf(ofp, "%.2f ", mat->arr[i * mat->cols + j]);
+    }
+    // print newline for all rows
+    fprintf(ofp, "\n");
+  }
+
+  // close output file pointer
+  fclose(ofp);
+}
+
+/**
+* Write results to a file named "results.out"
+* Data in mat is stored column-major order.
+*/
+void writeOutputColMajor(Matrix *mat){
+  FILE* ofp;
+  ofp = fopen("result.out","w");
+  if(ofp == NULL) {
+    perror("Could not open result.out to write results");
+    exit(1);
+  }
+
+  int i,j;
+  for(i = 0; i < mat->rows; i++){
+    for(j = 0; j < mat->cols; j++){
+      fprintf(ofp, "%.2f ", mat->arr[i + mat->rows * j]);
     }
     // print newline for all rows
     fprintf(ofp, "\n");
@@ -105,7 +129,6 @@ void writeOutput(Matrix *mat){
 /**
 * Print the contents of matrix to stdout for debugging
 */
-
 void printMatrix(Matrix *mat) {
   int i,j;
   for(i = 0; i < mat->rows; i++){
@@ -114,6 +137,16 @@ void printMatrix(Matrix *mat) {
     }
     // print newline for all rows
     printf("\n");
+  }
+}
+
+/**
+* Print the contents of matrix to stdout for debugging
+*/
+void printMatrixAll(Matrix *mat) {
+  int i;
+  for(i = 0; i < mat->rows * mat->cols; i++){
+    printf("%.2f ", mat->arr[i]);
   }
 }
 
@@ -216,29 +249,84 @@ int errorCheckMatrices(Matrix *mat1, Matrix *mat2){
 }
 
 /**
+* In order for faster matrix processing, this function will take an array
+* of matrix data in row-major order and convert it to column-major order.
+*/
+void convValuesColMajor(Matrix *p) {
+  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * p->rows * p->cols);
+
+  if (newArray == NULL) {
+    perror("Error, couldn't allocate space for array");
+    exit(1);
+  }
+
+  int iterator = 0;
+  int i, j, idx;
+  for(i = 0; i < p->rows; i++){
+    idx = i;
+    for(j = 0; j < p->cols; j++){
+      newArray[idx] = p->arr[iterator++];
+      idx += p->rows;
+    }
+  }
+
+  // free the old array
+  free(p->arr);
+
+  // set pointer to new array
+  p->arr = newArray;
+}
+
+/**
  * This function will multiply using a tiling algorithm
  */
-void cublasMatMul(Matrix *mat1, Matrix *mat2, Matrix *mat3) {
+//void cublasMatMul(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int mat1Rows, int mat1Cols, int mat2Cols) {
+void cublasMatMul(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, Matrix *mat1, Matrix *mat2, Matrix *mat3) {
 
+  float a = 1.0;
+  float b = 0.0;
+  float *alpha = &a;
+  float *beta = &b;
+  
+  int lda = mat1->rows;
+  int ldb = mat2->rows;
+  int ldc = mat3->rows;
+  
+  // cublas structures
+  cublasHandle_t h;
+  
+  // link handle
+  cublasCreate(&h);
+
+  // matrix multiply with cuBLAS.
+  // Note: CUBLAS_OP_N signfifies no transposition for matrix1 and matrix2
+  // IMPORTANT: to use cuBLAS matrices must be in column-major order
+  cublasSgemm(h, CUBLAS_OP_N, CUBLAS_OP_N, mat1->rows, mat2->cols, mat1->cols, 
+              alpha, Md, lda, Nd, ldb, beta, Pd, ldc);
+              
+  cublasDestroy(h);
 }
 
 void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
-  int size = mat1->cols * mat2->rows * sizeof(FLOAT);
+  int size;
   FLOAT *Md, *Nd, *Pd;
 
   // Allocate space and send data for Matrix1 to GPU
+  size = mat1->rows * mat1->cols * sizeof(FLOAT);
   HANDLE_ERROR( cudaMalloc(&Md, size) );
   HANDLE_ERROR( cudaMemcpy(Md, mat1->arr, size, cudaMemcpyHostToDevice) );
 
   // Allocate space and send data for Matrix2 to GPU
+  size = mat2->rows * mat2->cols * sizeof(FLOAT);
   HANDLE_ERROR( cudaMalloc(&Nd, size) );
   HANDLE_ERROR( cudaMemcpy(Nd, mat2->arr, size, cudaMemcpyHostToDevice) );
 
   // Allocate space for Matrix3 on GPU
+  size = mat3->rows * mat3->cols * sizeof(FLOAT);
   HANDLE_ERROR( cudaMalloc(&Pd, size) );
 
   // Compute matrix with cuBLAS library
-  cublasMatMul(mat1, mat2, mat3);
+  cublasMatMul(Md, Nd, Pd, mat1, mat2, mat3);
 
   // Copy results back to CPU
   HANDLE_ERROR( cudaMemcpy(mat3->arr, Pd, size, cudaMemcpyDeviceToHost) );
@@ -247,29 +335,6 @@ void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
   HANDLE_ERROR( cudaFree(Md) );
   HANDLE_ERROR( cudaFree(Nd) );
   HANDLE_ERROR( cudaFree(Pd) );
-}
-
-void newArraySetup(Matrix *mat, int numRows, int numCols) {
-  FLOAT *newArray = (FLOAT*) calloc(numRows * numCols, sizeof(FLOAT));
-
-  int i;
-  for(i = 0; i < mat->rows; i++) {
-    memcpy(newArray + numCols * i, mat->arr + mat->cols * i, sizeof(FLOAT) * mat->cols);
-  }
-
-  // set oldRows and oldCols
-  mat->oldRows = mat->rows;
-  mat->oldCols = mat->cols;
-
-  // set new rows and cols
-  mat->rows = numRows;
-  mat->cols = numCols;
-
-  // free old array
-  free(mat->arr);
-
-  // link new array
-  mat->arr = newArray;
 }
 
 int main( int argc, char **argv ) {
@@ -285,6 +350,7 @@ int main( int argc, char **argv ) {
   mapFileToMemory(argv[1], pMat1);
   initMatrixArray(pMat1, DEF_ROWS, DEF_COLS);
   storeMatrixToArray(pMat1);
+  convValuesColMajor(pMat1);
   unmapFile(pMat1);
 
   // Setup matrix2
@@ -293,6 +359,7 @@ int main( int argc, char **argv ) {
   mapFileToMemory(argv[2], pMat2);
   initMatrixArray(pMat2, DEF_ROWS, DEF_COLS);
   storeMatrixToArray(pMat2);
+  convValuesColMajor(pMat2);
   unmapFile(pMat2);
 
   // check for errors
@@ -303,8 +370,9 @@ int main( int argc, char **argv ) {
   Matrix *pMat3 = &m3;
   initMatrixArray(pMat3, pMat1->rows, pMat2->cols);
   matrixMulOnDevice(pMat1, pMat2, pMat3);
-  writeOutput(pMat3);
-
+  writeOutputColMajor(pMat3);
+  //printMatrixAll(pMat3);
+  
   // Free allocated memory
   free(pMat1->arr);
   free(pMat2->arr);
