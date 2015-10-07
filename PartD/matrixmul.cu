@@ -5,10 +5,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <cublas_v2.h>
 
 #define DEF_ROWS 2
 #define DEF_COLS 2
-#define TILE_WIDTH 32
 
 // FLOAT will either be a float or double depending on what user decides. (could use a better name)
 typedef struct {
@@ -137,27 +137,6 @@ void initMatrixArray(Matrix *mat, int initRows, int initCols) {
 }
 
 /**
-* Initialize an array in memory to hold matrix data.
-*/
-void initAnswerMatrix(Matrix *mat1, Matrix *mat2, Matrix *mat3) {
-  mat3->rows = mat1->rows;
-  mat3->cols = mat2->cols;
-  mat3->oldRows = mat1->oldRows;
-  mat3->oldCols = mat2->oldCols;
-  mat3->size = mat3->rows * mat3->cols;
-
-  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * mat3->rows * mat3->cols);
-
-  if (newArray == NULL) {
-    perror("Error, couldn't allocate space for array");
-    exit(1);
-  }
-
-  // set pointer to new array in memory
-  mat3->arr = newArray;
-}
-
-/**
 * If array holding Matrix data is not big enough create a new one twice as big.
 * Copy old array data to new array, and free old array from memory.
 */
@@ -239,26 +218,8 @@ int errorCheckMatrices(Matrix *mat1, Matrix *mat2){
 /**
  * This function will multiply using a tiling algorithm
  */
-__global__ void matMulKernel(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int width) {
- __shared__ FLOAT Mds[TILE_WIDTH][TILE_WIDTH];
- __shared__ FLOAT Nds[TILE_WIDTH][TILE_WIDTH];
+void cublasMatMul(Matrix *mat1, Matrix *mat2, Matrix *mat3) {
 
- int row = blockIdx.y * TILE_WIDTH + threadIdx.y;
- int col = blockIdx.x * TILE_WIDTH + threadIdx.x;
- FLOAT accum = 0;
-
- int m, k;
- for(m = 0; m < width / TILE_WIDTH; m++){
-   Mds[threadIdx.y][threadIdx.x] = Md[row * width + (m * TILE_WIDTH + threadIdx.x)];
-   Nds[threadIdx.y][threadIdx.x] = Nd[col + (m * TILE_WIDTH + threadIdx.y) * width];
-   __syncthreads();
-
-   for(k = 0; k < TILE_WIDTH; k++) {
-     accum += Mds[threadIdx.y][k] * Nds[k][threadIdx.x];
-   }
-   __syncthreads();
- }
- Pd[row * width + col] = accum;
 }
 
 void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
@@ -276,15 +237,15 @@ void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
   // Allocate space for Matrix3 on GPU
   HANDLE_ERROR( cudaMalloc(&Pd, size) );
 
-  // Each block...
-  dim3 dimGrid(mat1->cols/TILE_WIDTH, mat2->cols/TILE_WIDTH);
-
-  //
-  dim3 dimBlock(TILE_WIDTH, TILE_WIDTH);
-  matMulKernel<<<dimGrid, dimBlock>>>(Md, Nd, Pd, mat1->cols);
+  // Compute matrix with cuBLAS library
+  cublasMatMul(mat1, mat2, mat3);
 
   // Copy results back to CPU
   HANDLE_ERROR( cudaMemcpy(mat3->arr, Pd, size, cudaMemcpyDeviceToHost) );
+  
+  // Free GPU memory
+  HANDLE_ERROR( cudaFree(Md) );
+  HANDLE_ERROR( cudaFree(Nd) );
   HANDLE_ERROR( cudaFree(Pd) );
 }
 
@@ -309,31 +270,6 @@ void newArraySetup(Matrix *mat, int numRows, int numCols) {
 
   // link new array
   mat->arr = newArray;
-}
-
-/**
-* Pad both input matrices to be square, same-size, and mulpiles of TILE_WIDTH
-*/
-void padMatrix(Matrix *mat, Matrix *mat2) {
-  int numRows, numCols;
-  // pick bigger array to pad, copy same size for smaller array
-  if (mat->rows*mat->cols > mat2->rows*mat2->cols) {
-    numRows = mat->rows + (TILE_WIDTH - (mat->rows % TILE_WIDTH));
-    numCols = mat->cols + (TILE_WIDTH - (mat->cols % TILE_WIDTH));
-  } else {
-    numRows = mat2->rows + (TILE_WIDTH - (mat2->rows % TILE_WIDTH));
-    numCols = mat2->cols + (TILE_WIDTH - (mat2->cols % TILE_WIDTH));
-  }
-  
-  // pad to square array
-  if (numRows < numCols)  {
-    numRows = numCols;
-  } else {
-    numCols = numRows;
-  }
-  
-  newArraySetup(mat, numRows, numCols);
-  newArraySetup(mat2, numRows, numCols);
 }
 
 int main( int argc, char **argv ) {
@@ -361,14 +297,11 @@ int main( int argc, char **argv ) {
 
   // check for errors
   errorCheckMatrices(pMat1, pMat2);
-
-  // pad matrices 1 and 2 to multiples of TILE_WIDTH
-  padMatrix(pMat1, pMat2);
   
   // Matrix3 setup and compute
   Matrix m3;
   Matrix *pMat3 = &m3;
-  initAnswerMatrix(pMat1, pMat2, pMat3);
+  initMatrixArray(pMat3, pMat1->rows, pMat2->cols);
   matrixMulOnDevice(pMat1, pMat2, pMat3);
   writeOutput(pMat3);
 
