@@ -286,6 +286,8 @@ void matrixMulOnDevice(Matrix *mat1, Matrix *mat2, Matrix *mat3){
   // Copy results back to CPU
   HANDLE_ERROR( cudaMemcpy(mat3->arr, Pd, size, cudaMemcpyDeviceToHost) );
   HANDLE_ERROR( cudaFree(Pd) );
+  HANDLE_ERROR( cudaFree(Md) );
+  HANDLE_ERROR( cudaFree(Nd) );
 }
 
 void newArraySetup(Matrix *mat, int numRows, int numCols) {
