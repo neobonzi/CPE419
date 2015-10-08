@@ -107,6 +107,7 @@ void writeOutput(Matrix *mat){
 */
 
 void printMatrix(Matrix *mat) {
+  
   int i,j;
   for(i = 0; i < mat->rows; i++){
     for(j = 0; j < mat->cols; j++){
