@@ -8,5 +8,5 @@ single:  $(SRCFILES)
 	nvcc -D FLOAT=float $(NVFLAGS) -o mm_cuda $^ 
  
 clean: 
-	rm -f *.o mm_cuda
+	rm -f *.o mm_cublas
 
