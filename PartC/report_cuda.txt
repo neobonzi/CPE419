@@ -2,27 +2,43 @@ CPE 419 Project #1 Part C/Part D Report
 
 What is the CGMA (compute to global memory access) ratio for your code? This is the number of floating-point calculations performed for each access to the global memory within a region of a CUDA program. How does this compare to the CGMA ratio for your solution to Part B?
 
+The CGMA ratio for Part B was 1, there were 128 global memory reads required (64 for each array) for 128 computations (64 multiplications and 64 additions).
 
+In Part C, each thread has 2 global memory accesses and 64 additions and 64 multiplications for a total of 128/2 = 64 CGMA ratio
 
+Therefore in Part C our CGMA is 64 times better.
+
+PART C:
 Sample Runs, single precision:
 
   Run # |   Real   |   User   |    Sys   | 
 ------------------------------------------
-    1   |  2.357s  |  1.922s  |  0.241s  |
+    1   |  2.623s  |  2.053s  |  0.370s  |
 ------------------------------------------
-    2   |  2.339s  |  1.922s  |  0.241s  |
+    2   |  2.565s  |  2.036s  |  0.377s  |
 ------------------------------------------
-    3   |  2.318s  |  1.925s  |  0.238s  |
+    3   |  2.586s  |  2.048s  |  0.367s  |
     
 Sample Runs, double precision:
 
   Run # |   Real   |   User   |    Sys   | 
 ------------------------------------------
-    1   |  2.411s  |  1.961s  |  0.262s  |
+    1   |  2.636s  |  2.067s  |  0.405s  |
 ------------------------------------------
-    2   |  2.389s  |  1.978s  |  0.248s  |
+    2   |  2.627s  |  2.077s  |  0.402s  |
 ------------------------------------------
-    3   |  2.381s  |  1.969s  |  0.259s  |
+    3   |  2.624s  |  2.080s  |  0.386s  |
     
+Part D
+Sample Runs, single precision    
     
-    
+  Run # |   Real   |   User   |    Sys   | 
+------------------------------------------
+    1   |  4.316s  |  2.982s  |  0.431s  |
+------------------------------------------
+    2   |  2.839s  |  2.180s  |  0.409s  |
+------------------------------------------
+    3   |  2.792s  |  2.188s  |  0.391s  |
+
+Sample Runs, double precision
+Library does not run with double!
