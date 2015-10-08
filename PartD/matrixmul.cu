@@ -278,9 +278,8 @@ void convValuesColMajor(Matrix *p) {
 }
 
 /**
- * This function will multiply using a tiling algorithm
+ * This function will multiply using the cuBLAS library.
  */
-//void cublasMatMul(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, int mat1Rows, int mat1Cols, int mat2Cols) {
 void cublasMatMul(FLOAT *Md, FLOAT *Nd, FLOAT *Pd, Matrix *mat1, Matrix *mat2, Matrix *mat3) {
 
   float a = 1.0;
@@ -371,7 +370,6 @@ int main( int argc, char **argv ) {
   initMatrixArray(pMat3, pMat1->rows, pMat2->cols);
   matrixMulOnDevice(pMat1, pMat2, pMat3);
   writeOutputColMajor(pMat3);
-  //printMatrixAll(pMat3);
   
   // Free allocated memory
   free(pMat1->arr);
