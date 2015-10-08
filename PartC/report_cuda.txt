@@ -1,4 +1,4 @@
-CPE 419 Project #1 Part C/Part D Report
+CPE 419 Project #1 Part C Report
 
 What is the CGMA (compute to global memory access) ratio for your code? This is the number of floating-point calculations performed for each access to the global memory within a region of a CUDA program. How does this compare to the CGMA ratio for your solution to Part B?
 
@@ -28,17 +28,5 @@ Sample Runs, double precision:
     2   |  2.627s  |  2.077s  |  0.402s  |
 ------------------------------------------
     3   |  2.624s  |  2.080s  |  0.386s  |
-    
-Part D
-Sample Runs, single precision    
-    
-  Run # |   Real   |   User   |    Sys   | 
-------------------------------------------
-    1   |  4.316s  |  2.982s  |  0.431s  |
-------------------------------------------
-    2   |  2.839s  |  2.180s  |  0.409s  |
-------------------------------------------
-    3   |  2.792s  |  2.188s  |  0.391s  |
-
-Sample Runs, double precision
-Library does not run with double!
+  
+  
