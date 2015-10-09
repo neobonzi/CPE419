@@ -5,7 +5,7 @@ SRCFILES=matrixmul.cu
 all:	single 
 
 single:  $(SRCFILES) 
-	nvcc -D FLOAT=float $(NVFLAGS) -o mm_cuda $^ 
+	nvcc -D FLOAT=float $(NVFLAGS) -o mm_cublas $^ 
  
 clean: 
 	rm -f *.o mm_cublas
