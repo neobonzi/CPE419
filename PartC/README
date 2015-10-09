@@ -1,8 +1,8 @@
-CPE 419 - Fall 2015 Matrix Multiplier Project Part B
+CPE 419 - Fall 2015 Matrix Multiplier Project Part C 
 James Bilous
 Jon Doughty
 
-This program multiplies two provided matrices using an NVidia GPU. The cuda library toolkit is required. 1024 threads are used per block, with the blocks and grids depending on the input size. For example, squaring a 1408 x 1408 matrix requires 44 blocks in a single grid. This means there are 44 * 1024 = 45,056 threads working to compute the result.
+This program multiplies two arbitrary sided provided matrices using an NVidia GPU. The program uses shared memory and a tiling algorithm for increased performance. 
 
 Run with:
 ./mm_cuda <input1> <input2>

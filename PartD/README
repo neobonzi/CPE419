@@ -1,8 +1,8 @@
-CPE 419 - Fall 2015 Matrix Multiplier Project Part B
+CPE 419 - Fall 2015 Matrix Multiplier Project Part D
 James Bilous
 Jon Doughty
 
-This program multiplies two provided matrices using an NVidia GPU. The cuda library toolkit is required. 1024 threads are used per block, with the blocks and grids depending on the input size. For example, squaring a 1408 x 1408 matrix requires 44 blocks in a single grid. This means there are 44 * 1024 = 45,056 threads working to compute the result.
+This program multiples two arbitrary sized matrices using the cuBLAS library. Things to note are that before matrices can be used, they must be converted to column-major order. Furthermore, the output is column-major order but it output in row-major to result.out. Furthermore, the cuBLAS Sgemm() function does not support the use of double values in arrays, so double precision is not supported.
 
 Run with:
 ./mm_cuda <input1> <input2>
@@ -11,6 +11,3 @@ To compile the cuda matrix multiplier -
 
 With single precision float:
 make single
-
-With double precision double:
-make double
