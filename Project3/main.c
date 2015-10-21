@@ -8,10 +8,46 @@
 
 #define DEF_ROWS 2
 #define DEF_COLS 2
+#define NUM_BINS 40
+#define MAX_VAL 10
+#define MIN_VAL -10
 
 typedef struct{
   float *arr;
 } Vector;
+
+/**
+ * Compute histogram for a given vector
+ */
+void computeHistogram(Vector *v)
+{
+    int vectorIndex;
+    int spread = MAX_VAL - MIN_VAL;
+    float binWidth = spread / NUM_BINS;
+
+    // Create the bins uu
+    v->hist = malloc(sizeof(float) * NUM_BINS);
+    
+    for(vectorIndex = 0; vectorIndex < v.size; vectorIndex++)
+    {
+        //Compute bin
+        int binIndex = (v[vectorIndex] - MIN_VAL) / binWidth;
+        v->hist[binIndex]++;
+    }
+}
+
+/**
+ * Add two vectors and place the result in an output vector
+ */
+void addVectors(Vector *v1, Vector *v2, Vector *out)
+{
+    int vectorIndex;
+    
+    for(vectorIndex = 0; vectorIndex < v1.size; vectorIndex++)
+    {
+        out->arr[vectorIndex] = v1->arr[vectorIndex] + v2->arr[vectorIndex];
+    }
+}
 
 /**
 * This function will take a filename and map its contents into memory for 
