@@ -6,14 +6,17 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
-#define DEF_ROWS 2
-#define DEF_COLS 2
 #define NUM_BINS 40
 #define MAX_VAL 10
 #define MIN_VAL -10
+#define DEF_SIZE 2
 
 typedef struct{
   float *arr;
+  float *hist;
+  int mmapFileSize;
+  char *mmapFileLoc;
+  int size;
 } Vector;
 
 /**
@@ -97,12 +100,10 @@ int unmapFile(Vector *vec){
 /**
 * Initialize an array in memory to hold vecrix data.
 */
-void initVectorArray(Vector *vec, int initRows, int initCols) {
-  vec->rows = initRows;
-  vec->cols = initCols;
-  vec->size = vec->rows * vec->cols;
+void initVectorArray(Vector *vec, int initSize) {
+  vec->size = initSize;
 
-  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * vec->rows * vec->cols);
+  float *newArray = (float *) malloc(sizeof(float) * vec->size);
 
   if (newArray == NULL) {
     perror("Error, couldn't allocate space for array");
@@ -119,7 +120,7 @@ void initVectorArray(Vector *vec, int initRows, int initCols) {
 */
 void doubleArraySize(Vector *vec) {
   // malloc new array, double the size of previous array
-  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * vec->size * 2);
+  float *newArray = (float *) malloc(sizeof(float) * vec->size * 2);
 
   if (newArray == NULL) {
     perror("Error, couldn't allocate space for array\n");
@@ -127,7 +128,7 @@ void doubleArraySize(Vector *vec) {
   }
 
   // copy old array to newArray
-  newArray = (FLOAT*) memcpy(newArray, vec->arr, sizeof(FLOAT) * vec->size);
+  newArray = (float*) memcpy(newArray, vec->arr, sizeof(float) * vec->size);
 
   // update size of array
   vec->size *= 2;
@@ -147,7 +148,7 @@ void doubleArraySize(Vector *vec) {
 void storeVectorToArray(Vector *vec){
   int mmapIdx = 0, bfrIdx = 0, arrIdx = 0, numRows = 0, numCols = 0, 
       countCols = 1;
-  char buffer[101];    // buffer to hold FLOAT up to 100 digits long
+  char buffer[10];    // buffer to hold float up to 9 digits long
 
   for(mmapIdx = 0; mmapIdx <= vec->mmapFileSize; mmapIdx++) {
     if(vec->mmapFileLoc[mmapIdx] == ' '){ // found a number, store into Vector
@@ -159,32 +160,30 @@ void storeVectorToArray(Vector *vec){
         doubleArraySize(vec);
       }
 
-      // convert char buffer to FLOAT and store in Vector array
-      vec->arr[arrIdx++] = (FLOAT) atof(buffer);
-
-      // only count number of columns until reach first newline
-      if (countCols) numCols++;
+      // convert char buffer to float and store in Vector array
+      vec->arr[arrIdx++] = (float) atof(buffer);
 
       // clear buffer, reset buffer index to 0
       memset(buffer, '\0', bfrIdx);
       bfrIdx = 0;
     } else if(vec->mmapFileLoc[mmapIdx] == '\n') {
-      if (countCols) {
-        vec->cols = numCols;
-        countCols = 0;    // disable counting columns
-      }
-      numRows++;
+      // done with file IO
+      return;
     }
 
     /* grab a character at each loop iteration and store into buffer[] to 
-    conv to FLOAT */
+    conv to float */
     buffer[bfrIdx++] = vec->mmapFileLoc[mmapIdx];
   }
-
-  vec->rows = numRows;
 }
 
-
+void errorCheckMatrices(Vector *vec1, Vector *vec2){
+  if (vec1->size != vec2->size){
+    fprintf(stderr,"Error: vectors are not compatible size\n");
+    fprintf("vec1 size %d, vec2 size %d", vec1->size, vec2->size);
+    exit(1);
+  }
+}
 
 /**
  * This function will multiply using the cuBLAS library.
@@ -197,8 +196,38 @@ int main( int argc, char **argv ) {
     exit(1);
   }
   
-    
+  Vector v1;
+  Vector *pVec1 = &v1;
+  mapFileToMemory(argv[1], pVec1);
+  initVectorArray(pVec1, DEF_SIZE);
+  storeVectorToArray(pVec1);
+  unmapFile(pVec1)
+  
+  Vector v2;
+  Vector *pVec2 = &v2;
+  mapFileToMemory(argv[2], pVec2);
+  initVectorArray(pVec2, DEF_SIZE);
+  storeVectorToArray(pVec2);
+  unmapFile(pVec2)
+  
+  errorCheckVectors(pVec1, pVec2);
+ 
+  Vector v3;
+  Vector *pVec3 = &v3;
+  int max = pVec1->size > pVec2->size ? pVec1->size : pVec2->size;
+  initVectorArray(pVec3, max);
+  storeVectorToArray(pVec2);
+  unmapFile(pVec2)
+
   // Free allocated memory
+  free(pVec1->arr);
+  free(pVec2->arr);
+  free(pVec3->arr);
+ 
+  free(pVec1->hist);
+  free(pVec2->hist);
+  free(pVec3->hist);
+
 
   return 0;
 }
