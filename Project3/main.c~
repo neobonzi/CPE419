@@ -1,0 +1,75 @@
+#include <stdio.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/mman.h>
+
+#define DEF_ROWS 2
+#define DEF_COLS 2
+
+
+/**
+* This function will take a filename and map its contents into memory for 
+* faster access.
+*/
+int mapFileToMemory(char* fName, Matrix *mat){
+  int fd, size;
+  char *map;
+  struct stat st;
+
+  stat(fName, &st);
+  size = st.st_size;      // use stat to get file size
+  mat->mmapFileSize = size;
+
+  fd = open(fName, O_RDONLY);
+  if (fd == -1) {
+    perror("Error, could not open file");
+    close(fd);
+    exit(1);
+  }
+
+  map = (char*) mmap(0, size, PROT_READ, MAP_PRIVATE, fd, 0);
+  if (map == MAP_FAILED) {
+    perror("Error, could not map file");
+    close(fd);
+    exit(1);
+  }
+
+  mat->mmapFileLoc = map;
+
+  close(fd);
+  return  0;
+}
+
+/**
+* This function will un-map a file that was previously mapped into memory.
+*/
+int unmapFile(Matrix *mat){
+  if (munmap(mat->mmapFileLoc, mat->mmapFileSize) == -1) {
+  	perror("Error un-mapping the file");
+  	exit(1);
+  }
+
+  return 0;
+}
+
+
+
+
+/**
+ * This function will multiply using the cuBLAS library.
+ */
+
+int main( int argc, char **argv ) {
+  // exit if not enough arguments
+  if (argc != 3) {
+    printf("Error: incorrect amount of arguments");
+    exit(1);
+  }
+  
+  // Free allocated memory
+
+  return 0;
+}
