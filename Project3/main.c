@@ -141,7 +141,13 @@ void storeVectorToArray(Vector *vec){
   }
 }
 
-
+void errorCheckMatrices(Vector *vec1, Vector *vec2){
+  if (vec1->size != vec2->size){
+    fprintf(stderr,"Error: vectors are not compatible size\n");
+    fprintf("vec1 size %d, vec2 size %d", vec1->size, vec2->size);
+    exit(1);
+  }
+}
 
 /**
  * This function will multiply using the cuBLAS library.
@@ -168,6 +174,8 @@ int main( int argc, char **argv ) {
   storeVectorToArray(pVec2);
   unmapFile(pVec2)
   
+  errorCheckVectors(pVec1, pVec2);
+ 
   Vector v3;
   Vector *pVec3 = &v3;
   int max = pVec1->size > pVec2->size ? pVec1->size : pVec2->size;
