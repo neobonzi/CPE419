@@ -1,0 +1,25 @@
+CPE 419 - Fall 2015 Project 2, Parts A-C
+
+This program builds on top of a serial matrix multiply algorithm by adding
+OpenMP directives to let the compiler know where to parallelize execution.
+
+Furthermore, the executable my-omp-env uses OpenMP functions to query the
+system for information regarding number and max amount of threads available, 
+number of processors available, whether currently in a parallel code segment,
+whether dynamic threads allocation is allowed and whether nested parallelism
+is supported. 
+
+Compilation options:
+
+make                    // makes both files as specified in spec.
+make single             // single-precision
+make single-col         // single-precision, matrix 2 in column-major
+make double             // double-precision
+make double-col         // double-precision, matrix 2 in column-major
+make ompenv             // make program which prints OpenMP environment specs.
+
+Execute with:
+
+./mm <input1> <input2>
+./my-omp-env
+

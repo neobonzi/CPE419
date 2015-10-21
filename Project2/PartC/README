@@ -1,0 +1,16 @@
+CPE 419 - Fall 2015 Matrix Multiplier Project Part C 
+James Bilous
+Jon Doughty
+
+This program multiplies two arbitrary sided provided matrices using an NVidia GPU. The program uses shared memory and a tiling algorithm for increased performance. 
+
+Run with:
+./mm_cuda <input1> <input2>
+
+To compile the cuda matrix multiplier -
+
+With single precision float:
+make single
+
+With double precision double:
+make double
