@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <string.h>
 
 #define NUM_BINS 40
 #define MAX_VAL 10
@@ -12,8 +13,8 @@
 #define DEF_SIZE 2
 
 typedef struct{
-  float *arr;
-  float *hist;
+  FLOAT *arr;
+  FLOAT *hist;
   int mmapFileSize;
   char *mmapFileLoc;
   int size;
@@ -24,17 +25,18 @@ typedef struct{
  */
 void computeHistogram(Vector *v)
 {
-    int vectorIndex;
+    int vectorIndex = 0;
+    int binIndex = 0;
     int spread = MAX_VAL - MIN_VAL;
-    float binWidth = spread / NUM_BINS;
-
-    // Create the bins uu
-    v->hist = malloc(sizeof(float) * NUM_BINS);
+    FLOAT binWidth = spread / NUM_BINS;
     
-    for(vectorIndex = 0; vectorIndex < v.size; vectorIndex++)
+    // Create the bins uu
+    v->hist = malloc(sizeof(FLOAT) * NUM_BINS);
+    
+    for(vectorIndex = 0; vectorIndex < v->size; vectorIndex++)
     {
         //Compute bin
-        int binIndex = (v[vectorIndex] - MIN_VAL) / binWidth;
+        binIndex = (v->arr[vectorIndex] - MIN_VAL) / binWidth;
         v->hist[binIndex]++;
     }
 }
@@ -46,7 +48,7 @@ void addVectors(Vector *v1, Vector *v2, Vector *out)
 {
     int vectorIndex;
     
-    for(vectorIndex = 0; vectorIndex < v1.size; vectorIndex++)
+    for(vectorIndex = 0; vectorIndex < v1->size; vectorIndex++)
     {
         out->arr[vectorIndex] = v1->arr[vectorIndex] + v2->arr[vectorIndex];
     }
@@ -98,12 +100,54 @@ int unmapFile(Vector *vec){
 }
 
 /**
+* Write results to a file named "results.out"
+* Data in mat is stored row-major order.
+*/
+void writeOutput(Vector *vec){
+  FILE* ofp;
+  ofp = fopen("result.out","w");
+  if(ofp == NULL) {
+    perror("Could not open result.out to write results");
+    exit(1);
+  }
+
+  int i;
+  for(i = 0; i < vec->size; i++){
+    fprintf(ofp, "%.2f ", vec->arr[i]);
+  }
+
+  // close output file pointer
+  fclose(ofp);
+}
+
+/**
+* Write results to a file named "results.out"
+* Data in mat is stored row-major order.
+*/
+void writeHistOutput(Vector *vec, char *fileName){
+  FILE* ofp;
+  ofp = fopen(fileName, "w");
+  if(ofp == NULL) {
+    perror("Could not open result.out to write results");
+    exit(1);
+  }
+
+  int i;
+  for(i = 0; i < NUM_BINS; i++){
+    fprintf(ofp, "%d, %d\n", i, vec->hist[i]);
+  }
+
+  // close output file pointer
+  fclose(ofp);
+}
+
+/**
 * Initialize an array in memory to hold vecrix data.
 */
 void initVectorArray(Vector *vec, int initSize) {
   vec->size = initSize;
 
-  float *newArray = (float *) malloc(sizeof(float) * vec->size);
+  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * vec->size);
 
   if (newArray == NULL) {
     perror("Error, couldn't allocate space for array");
@@ -120,7 +164,7 @@ void initVectorArray(Vector *vec, int initSize) {
 */
 void doubleArraySize(Vector *vec) {
   // malloc new array, double the size of previous array
-  float *newArray = (float *) malloc(sizeof(float) * vec->size * 2);
+  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * vec->size * 2);
 
   if (newArray == NULL) {
     perror("Error, couldn't allocate space for array\n");
@@ -128,7 +172,7 @@ void doubleArraySize(Vector *vec) {
   }
 
   // copy old array to newArray
-  newArray = (float*) memcpy(newArray, vec->arr, sizeof(float) * vec->size);
+  newArray = (FLOAT*) memcpy(newArray, vec->arr, sizeof(FLOAT) * vec->size);
 
   // update size of array
   vec->size *= 2;
@@ -142,13 +186,13 @@ void doubleArraySize(Vector *vec) {
 
 /**
 * Read values from memory mapped location into an array for processing.
-* This function reads in the characters and converts them to floats or doubles
+* This function reads in the characters and converts them to FLOATs or doubles
 * before storing in the array.
 */
 void storeVectorToArray(Vector *vec){
   int mmapIdx = 0, bfrIdx = 0, arrIdx = 0, numRows = 0, numCols = 0, 
       countCols = 1;
-  char buffer[10];    // buffer to hold float up to 9 digits long
+  char buffer[100];    // buffer to hold FLOAT up to 99 digits long
 
   for(mmapIdx = 0; mmapIdx <= vec->mmapFileSize; mmapIdx++) {
     if(vec->mmapFileLoc[mmapIdx] == ' '){ // found a number, store into Vector
@@ -160,8 +204,8 @@ void storeVectorToArray(Vector *vec){
         doubleArraySize(vec);
       }
 
-      // convert char buffer to float and store in Vector array
-      vec->arr[arrIdx++] = (float) atof(buffer);
+      // convert char buffer to FLOAT and store in Vector array
+      vec->arr[arrIdx++] = (FLOAT) atof(buffer);
 
       // clear buffer, reset buffer index to 0
       memset(buffer, '\0', bfrIdx);
@@ -172,15 +216,15 @@ void storeVectorToArray(Vector *vec){
     }
 
     /* grab a character at each loop iteration and store into buffer[] to 
-    conv to float */
+    conv to FLOAT */
     buffer[bfrIdx++] = vec->mmapFileLoc[mmapIdx];
   }
 }
 
-void errorCheckMatrices(Vector *vec1, Vector *vec2){
+void errorCheckVectors(Vector *vec1, Vector *vec2){
   if (vec1->size != vec2->size){
-    fprintf(stderr,"Error: vectors are not compatible size\n");
-    fprintf("vec1 size %d, vec2 size %d", vec1->size, vec2->size);
+    fprintf(stderr, "Error: vectors are not compatible size\n");
+    fprintf(stderr, "vec1 size %d, vec2 size %d\n", vec1->size, vec2->size);
     exit(1);
   }
 }
@@ -201,14 +245,14 @@ int main( int argc, char **argv ) {
   mapFileToMemory(argv[1], pVec1);
   initVectorArray(pVec1, DEF_SIZE);
   storeVectorToArray(pVec1);
-  unmapFile(pVec1)
+  unmapFile(pVec1);
   
   Vector v2;
   Vector *pVec2 = &v2;
   mapFileToMemory(argv[2], pVec2);
   initVectorArray(pVec2, DEF_SIZE);
   storeVectorToArray(pVec2);
-  unmapFile(pVec2)
+  unmapFile(pVec2);
   
   errorCheckVectors(pVec1, pVec2);
  
@@ -217,8 +261,14 @@ int main( int argc, char **argv ) {
   int max = pVec1->size > pVec2->size ? pVec1->size : pVec2->size;
   initVectorArray(pVec3, max);
   storeVectorToArray(pVec2);
-  unmapFile(pVec2)
-
+  unmapFile(pVec2);
+  writeOutput(pVec3);
+  
+  // write histogram output
+  writeHistOutput(pVec1, "hist.a");
+  writeHistOutput(pVec2, "hist.b");
+  writeHistOutput(pVec3, "hist.c");
+  
   // Free allocated memory
   free(pVec1->arr);
   free(pVec2->arr);
@@ -227,7 +277,6 @@ int main( int argc, char **argv ) {
   free(pVec1->hist);
   free(pVec2->hist);
   free(pVec3->hist);
-
 
   return 0;
 }

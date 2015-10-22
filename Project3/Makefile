@@ -1,24 +1,11 @@
-FLAGS=-O3 -g -debug inline-debug-info -qopenmp
+FLAGS=-O1 -g
 SRCFILES=main.c
-OMPFILES=openMpEnv.c
 
-all:	single-col ompenv 
+all:	vectorsum
 		
-single:  $(SRCFILES) 
-	icc -D FLOAT=float -D COL_MAJOR=0 -D $(FLAGS) -o mm $^ 
-
-double:  $(SRCFILES) 
-	icc -D FLOAT=double -D COL_MAJOR=0 -D $(FLAGS) -o mm $^ 
-	
-single-col:  $(SRCFILES) 
-	icc -D FLOAT=float -D COL_MAJOR=1 -D $(FLAGS) -o mm $^ 
-
-double-col:  $(SRCFILES) 
-	icc -D FLOAT=double -D COL_MAJOR=1 -D $(FLAGS) -o mm $^ 	
-		
-ompenv:  $(OMPFILES) 
-	icc $(FLAGS) -o my-omp-env $^
+vectorsum:  $(SRCFILES) 
+	gcc -D FLOAT=float $(FLAGS) -o vectorsum $^ 
  
 clean: 
-	rm -f *.o mm_openmp my-omp-env
+	rm -f *.o vectorsum
 
