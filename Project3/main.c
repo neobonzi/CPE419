@@ -63,7 +63,8 @@ void computeHistogram(Vector *v, int max, int min, int numBins)
 void addVectors(Vector *v1, Vector *v2, Vector *out)
 {
     int vectorIndex;
-    
+
+    #pragma offload target(mic) in(v1:length(v1->size)) in(v2:length(v2->size)) out(out:length(v1->size)) 
     for(vectorIndex = 0; vectorIndex < v1->size; vectorIndex++)
     {
         out->arr[vectorIndex] = v1->arr[vectorIndex] + v2->arr[vectorIndex];
@@ -153,7 +154,6 @@ void printVector(Vector *vec) {
 void writeHistOutput(Vector *vec, char *fileName, int numBins){
   FILE* ofp;
   ofp = fopen(fileName, "w");
-  fprintf(stderr, "writing");
   if(ofp == NULL) {
     perror("Could not open result.out to write results");
     exit(1);

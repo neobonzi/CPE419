@@ -1,4 +1,4 @@
-FLAGS=-O3 -g -debug inline-debug-info -mmic
+FLAGS=-O3 -g -mmic -debug inline-debug-info
 SRCFILES=main.c
 
 all:	vectorsum
