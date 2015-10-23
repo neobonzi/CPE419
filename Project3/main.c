@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <string.h>
+#include <math.h>
 
 #define NUM_BINS 40
 #define MAX_VAL 10
@@ -14,7 +15,7 @@
 
 typedef struct{
   FLOAT *arr;
-  FLOAT *hist;
+  int *hist;
   int mmapFileSize;
   char *mmapFileLoc;
   int size;
@@ -25,13 +26,17 @@ typedef struct{
  */
 void computeHistogram(Vector *v)
 {
+    // fprintf(stderr, "comp hist for vector size: %d", v->size);
     int vectorIndex = 0;
     int binIndex = 0;
     int spread = MAX_VAL - MIN_VAL;
-    FLOAT binWidth = spread / NUM_BINS;
+    FLOAT binWidth =  ((FLOAT) spread) / NUM_BINS;
     
-    // Create the bins uu
-    v->hist = malloc(sizeof(FLOAT) * NUM_BINS);
+    // Create the bins
+    v->hist = malloc(sizeof(int) * NUM_BINS);
+    
+    // set all bins to zero
+    memset(v->hist, 0, sizeof(int) * NUM_BINS);
     
     for(vectorIndex = 0; vectorIndex < v->size; vectorIndex++)
     {
@@ -40,6 +45,7 @@ void computeHistogram(Vector *v)
         v->hist[binIndex]++;
     }
 }
+
 
 /**
  * Add two vectors and place the result in an output vector
@@ -105,7 +111,7 @@ int unmapFile(Vector *vec){
 */
 void writeOutput(Vector *vec){
   FILE* ofp;
-  ofp = fopen("result.out","w");
+  ofp = fopen("result.out", "w");
   if(ofp == NULL) {
     perror("Could not open result.out to write results");
     exit(1);
@@ -117,7 +123,17 @@ void writeOutput(Vector *vec){
   }
 
   // close output file pointer
-  fclose(ofp);
+  //fclose(ofp);   // this line is causing a segfault, not sure why
+}
+
+/**
+* Print the contents of matrix to stdout for debugging
+*/
+void printVector(Vector *vec) {
+  int i;
+  for(i = 0; i < vec->size; i++){
+    printf("%.2f ", vec->arr[i]);
+  }
 }
 
 /**
@@ -134,11 +150,14 @@ void writeHistOutput(Vector *vec, char *fileName){
 
   int i;
   for(i = 0; i < NUM_BINS; i++){
-    fprintf(ofp, "%d, %d\n", i, vec->hist[i]);
+    fprintf(ofp, "%d, %d", i, vec->hist[i]);
+    if (i < NUM_BINS - 1) {
+      fprintf(ofp, "\n");
+    }
   }
 
   // close output file pointer
-  fclose(ofp);
+  //fclose(ofp);  // this line is causing a segfault, not sure why
 }
 
 /**
@@ -190,11 +209,10 @@ void doubleArraySize(Vector *vec) {
 * before storing in the array.
 */
 void storeVectorToArray(Vector *vec){
-  int mmapIdx = 0, bfrIdx = 0, arrIdx = 0, numRows = 0, numCols = 0, 
-      countCols = 1;
+  int mmapIdx = 0, bfrIdx = 0, arrIdx = 0, localSize = 0;
   char buffer[100];    // buffer to hold FLOAT up to 99 digits long
 
-  for(mmapIdx = 0; mmapIdx <= vec->mmapFileSize; mmapIdx++) {
+  for(mmapIdx = 0; mmapIdx < vec->mmapFileSize; mmapIdx++) {
     if(vec->mmapFileLoc[mmapIdx] == ' '){ // found a number, store into Vector
       // null-terminate the buffer so it can be passed to atof()
       buffer[bfrIdx] = '\0';
@@ -206,19 +224,21 @@ void storeVectorToArray(Vector *vec){
 
       // convert char buffer to FLOAT and store in Vector array
       vec->arr[arrIdx++] = (FLOAT) atof(buffer);
+      
+      // increment size variable
+      localSize++;
 
       // clear buffer, reset buffer index to 0
       memset(buffer, '\0', bfrIdx);
       bfrIdx = 0;
-    } else if(vec->mmapFileLoc[mmapIdx] == '\n') {
-      // done with file IO
-      return;
-    }
+    } 
 
     /* grab a character at each loop iteration and store into buffer[] to 
     conv to FLOAT */
     buffer[bfrIdx++] = vec->mmapFileLoc[mmapIdx];
   }
+  
+  vec->size = localSize;
 }
 
 void errorCheckVectors(Vector *vec1, Vector *vec2){
@@ -229,10 +249,6 @@ void errorCheckVectors(Vector *vec1, Vector *vec2){
   }
 }
 
-/**
- * This function will multiply using the cuBLAS library.
- */
-
 int main( int argc, char **argv ) {
   // exit if not enough arguments
   if (argc != 3) {
@@ -240,43 +256,49 @@ int main( int argc, char **argv ) {
     exit(1);
   }
   
+  // initialize vector 1 and histogram vec1
   Vector v1;
   Vector *pVec1 = &v1;
   mapFileToMemory(argv[1], pVec1);
   initVectorArray(pVec1, DEF_SIZE);
   storeVectorToArray(pVec1);
   unmapFile(pVec1);
-  
+  computeHistogram(pVec1);
+
+  // initialize vector 2 and histogram vec2
   Vector v2;
   Vector *pVec2 = &v2;
   mapFileToMemory(argv[2], pVec2);
   initVectorArray(pVec2, DEF_SIZE);
   storeVectorToArray(pVec2);
   unmapFile(pVec2);
-  
+  // computeHistogram(pVec2);
+
+  // error check vectors
   errorCheckVectors(pVec1, pVec2);
- 
+
+  // compute vectorsum and histrogram vec3
   Vector v3;
   Vector *pVec3 = &v3;
-  int max = pVec1->size > pVec2->size ? pVec1->size : pVec2->size;
-  initVectorArray(pVec3, max);
-  storeVectorToArray(pVec2);
-  unmapFile(pVec2);
-  writeOutput(pVec3);
-  
+  // initVectorArray(pVec3, pVec1->size);    // vec sizes must be same at this pt.
+  // addVectors(pVec1, pVec2, pVec3);
+  // computeSumHistogram(pVec3);
+  // writeOutput(pVec3);
+    
   // write histogram output
-  writeHistOutput(pVec1, "hist.a");
-  writeHistOutput(pVec2, "hist.b");
-  writeHistOutput(pVec3, "hist.c");
-  
-  // Free allocated memory
-  free(pVec1->arr);
-  free(pVec2->arr);
-  free(pVec3->arr);
+  // writeHistOutput(pVec1, "hist.a");
+  // writeHistOutput(pVec2, "hist.b");
+  // writeHistOutput(pVec3, "hist.c");
+
+  // free allocated vector arrays
+  // free(pVec1->arr);
+  // free(pVec2->arr);
+  // free(pVec3->arr);    // causing segfault for some reason
  
-  free(pVec1->hist);
-  free(pVec2->hist);
-  free(pVec3->hist);
+  // free allocated histogram arrays
+  // free(pVec1->hist);
+  // free(pVec2->hist);
+  // free(pVec3->hist);   // causing segfault for some reason
 
   return 0;
 }

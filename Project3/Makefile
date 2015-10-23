@@ -1,4 +1,4 @@
-FLAGS=-O1 -g
+FLAGS=-g -L/lib/i386-linux-gnu -lm -pthread
 SRCFILES=main.c
 
 all:	vectorsum
