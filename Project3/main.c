@@ -9,8 +9,11 @@
 #include <math.h>
 
 #define NUM_BINS 40
+#define NUM_BINS_SUM 80
 #define MAX_VAL 10
 #define MIN_VAL -10
+#define MAX_VAL_SUM 20
+#define MIN_VAL_SUM -20
 #define DEF_SIZE 2
 
 typedef struct{
@@ -24,25 +27,32 @@ typedef struct{
 /**
  * Compute histogram for a given vector
  */
-void computeHistogram(Vector *v)
+void computeHistogram(Vector *v, int max, int min, int numBins)
 {
     // fprintf(stderr, "comp hist for vector size: %d", v->size);
     int vectorIndex = 0;
     int binIndex = 0;
-    int spread = MAX_VAL - MIN_VAL;
-    FLOAT binWidth =  ((FLOAT) spread) / NUM_BINS;
+    int spread = max - min;
+    FLOAT binWidth =  ((FLOAT) spread) / numBins;
     
     // Create the bins
-    v->hist = malloc(sizeof(int) * NUM_BINS);
+    v->hist = malloc(sizeof(int) * numBins);
     
     // set all bins to zero
-    memset(v->hist, 0, sizeof(int) * NUM_BINS);
+    memset(v->hist, 0, sizeof(int) * numBins);
     
     for(vectorIndex = 0; vectorIndex < v->size; vectorIndex++)
     {
         //Compute bin
-        binIndex = (v->arr[vectorIndex] - MIN_VAL) / binWidth;
-        v->hist[binIndex]++;
+        if(v->arr[vectorIndex] == max)
+        {
+            v->hist[numBins - 1]++;
+        }
+        else
+        {
+            binIndex = (v->arr[vectorIndex] - min) / binWidth;
+            v->hist[binIndex]++;
+        }
     }
 }
 
@@ -140,18 +150,19 @@ void printVector(Vector *vec) {
 * Write results to a file named "results.out"
 * Data in mat is stored row-major order.
 */
-void writeHistOutput(Vector *vec, char *fileName){
+void writeHistOutput(Vector *vec, char *fileName, int numBins){
   FILE* ofp;
   ofp = fopen(fileName, "w");
+  fprintf(stderr, "writing");
   if(ofp == NULL) {
     perror("Could not open result.out to write results");
     exit(1);
   }
 
   int i;
-  for(i = 0; i < NUM_BINS; i++){
+  for(i = 0; i < numBins; i++){
     fprintf(ofp, "%d, %d", i, vec->hist[i]);
-    if (i < NUM_BINS - 1) {
+    if (i < numBins - 1) {
       fprintf(ofp, "\n");
     }
   }
@@ -252,7 +263,7 @@ void errorCheckVectors(Vector *vec1, Vector *vec2){
 int main( int argc, char **argv ) {
   // exit if not enough arguments
   if (argc != 3) {
-    printf("Error: incorrect amount of arguments");
+    fprintf(stderr, "Error: incorrect amount of arguments");
     exit(1);
   }
   
@@ -263,7 +274,7 @@ int main( int argc, char **argv ) {
   initVectorArray(pVec1, DEF_SIZE);
   storeVectorToArray(pVec1);
   unmapFile(pVec1);
-  computeHistogram(pVec1);
+  computeHistogram(pVec1, MAX_VAL, MIN_VAL, NUM_BINS);
 
   // initialize vector 2 and histogram vec2
   Vector v2;
@@ -272,7 +283,7 @@ int main( int argc, char **argv ) {
   initVectorArray(pVec2, DEF_SIZE);
   storeVectorToArray(pVec2);
   unmapFile(pVec2);
-  // computeHistogram(pVec2);
+  computeHistogram(pVec2, MAX_VAL, MIN_VAL, NUM_BINS);
 
   // error check vectors
   errorCheckVectors(pVec1, pVec2);
@@ -280,24 +291,24 @@ int main( int argc, char **argv ) {
   // compute vectorsum and histrogram vec3
   Vector v3;
   Vector *pVec3 = &v3;
-  // initVectorArray(pVec3, pVec1->size);    // vec sizes must be same at this pt.
-  // addVectors(pVec1, pVec2, pVec3);
-  // computeSumHistogram(pVec3);
-  // writeOutput(pVec3);
+  initVectorArray(pVec3, pVec1->size);    // vec sizes must be same at this pt.
+  addVectors(pVec1, pVec2, pVec3);
+  computeHistogram(pVec3, MAX_VAL_SUM, MIN_VAL_SUM, NUM_BINS_SUM);
+  writeOutput(pVec3);
     
   // write histogram output
-  // writeHistOutput(pVec1, "hist.a");
-  // writeHistOutput(pVec2, "hist.b");
-  // writeHistOutput(pVec3, "hist.c");
+  writeHistOutput(pVec1, "hist.a", NUM_BINS);
+  writeHistOutput(pVec2, "hist.b", NUM_BINS);
+  writeHistOutput(pVec3, "hist.c", NUM_BINS_SUM);
 
   // free allocated vector arrays
-  // free(pVec1->arr);
-  // free(pVec2->arr);
+  free(pVec1->arr);
+  free(pVec2->arr);
   // free(pVec3->arr);    // causing segfault for some reason
  
   // free allocated histogram arrays
-  // free(pVec1->hist);
-  // free(pVec2->hist);
+  free(pVec1->hist);
+  free(pVec2->hist);
   // free(pVec3->hist);   // causing segfault for some reason
 
   return 0;
