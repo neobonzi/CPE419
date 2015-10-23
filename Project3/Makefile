@@ -1,10 +1,10 @@
-FLAGS=-g -L/lib/i386-linux-gnu -lm -pthread
+FLAGS=-O3 -g -debug inline-debug-info -mmic
 SRCFILES=main.c
 
 all:	vectorsum
 		
 vectorsum:  $(SRCFILES) 
-	gcc -D FLOAT=float $(FLAGS) -o vectorsum $^ 
+	icc -D FLOAT=float $(FLAGS) -o vectorsum $^ 
  
 clean: 
 	rm -f *.o vectorsum
