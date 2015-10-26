@@ -76,9 +76,6 @@ int unmapFile(Vector *vec){
 * Data in mat is stored row-major order.
 */
 void writeOutput(Vector *vec){
-  /**
-  * IMPORTANT: make sure to add 20 to each value before outputting 
-  */
   FILE* ofp;
   ofp = fopen("result.out", "w");
   if(ofp == NULL) {
@@ -173,23 +170,6 @@ void doubleArraySize(Vector *vec) {
 }
 
 /**
-* If array holding Vector data is not big enough create a new one twice as big.
-* Copy old array data to new array, and free old array from memory.
-*/
-void initOffsetArray(FLOAT *arr1, int size) {
-  // malloc new array, double the size of previous array
-  arr1 = (FLOAT *) malloc(sizeof(FLOAT) * size);
-
-  if (arr1 == NULL) {
-    perror("Error, couldn't allocate space for array\n");
-    exit(1);
-  }
-
-  // fill array with +20.0 so every value is positive
-  memset(arr1, MAX_VAL_SUM, sizeof(FLOAT) * size);
-}
-
-/**
 * Read values from memory mapped location into an array for processing.
 * This function reads in the characters and converts them to FLOATs or doubles
 * before storing in the array.
@@ -266,12 +246,6 @@ int main( int argc, char **argv ) {
   Vector *pVec2 = &v2;
   initVectorArray(pVec2, pVec1->size);
 
-  // important need to convert all array numbers to positive value before
-  // computations
-  FLOAT *add20;
-  initOffsetArray(add20, pVec1->size);
-  vsAdd(pVec1->size, pVec1->arr, add20, pVec2->arr);
-  
   // initialize MKL variables
   p = 1;    // this is the number of tasks (doc says variables)
   n = pVec1->size;
@@ -285,6 +259,8 @@ int main( int argc, char **argv ) {
     // Median
     // output a sorted (ascending order) copy of the array.
     
+  // Step 1. create the task
+  errcode = vslsSSNewTask(&task, &p, &n, &xstorage, x, w, 0);
       
   // before writing output, know that you must subtract 20 from each value
   // before outputting
