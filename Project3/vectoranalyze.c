@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <math.h>
+#include <mkl_vsl.h>
 
 // #define NUM_BINS 40
 // #define NUM_BINS_SUM 80
@@ -168,6 +169,34 @@ void doubleArraySize(Vector *vec) {
 }
 
 /**
+* If array holding Vector data is not big enough create a new one twice as big.
+* Copy old array data to new array, and free old array from memory.
+*/
+void initOffsetArrays(FLOAT *arr1, FLOAT *arr2, int size) {
+  // malloc new array, double the size of previous array
+  FLOAT *arr1 = (FLOAT *) malloc(sizeof(FLOAT) * size);
+
+  if (arr1 == NULL) {
+    perror("Error, couldn't allocate space for array\n");
+    exit(1);
+  }
+
+  // fill array with +20.0 so every value is positive
+  memset(arr1, 20.0, sizeof(FLOAT) * size);
+
+  // malloc new array, double the size of previous array
+  FLOAT *arr2 = (FLOAT *) malloc(sizeof(FLOAT) * size);
+
+  if (arr2 == NULL) {
+    perror("Error, couldn't allocate space for array\n");
+    exit(1);
+  }
+
+  // fill array with +20.0 so every value is positive
+  memset(arr2, 20.0, sizeof(FLOAT) * size);
+}
+
+/**
 * Read values from memory mapped location into an array for processing.
 * This function reads in the characters and converts them to FLOATs or doubles
 * before storing in the array.
@@ -215,44 +244,62 @@ void errorCheckVectors(Vector *vec1, Vector *vec2){
 
 int main( int argc, char **argv ) {
   // exit if not enough arguments
-  if (argc != 2) {
+  if (argc != 1) {
     fprintf(stderr, "Error: incorrect amount of arguments");
     exit(1);
   }
+  // Minimum value
+  // Maximum value
+  // Mean
+  // Standard Deviation
+  // Median
+  // output a sorted (ascending order) copy of the array.
+
+  VSLSSTaskPtr task;
+  FLOAT min_value = 0.0;
+  FLOAT max_value = 0.0;
+  FLOAT mean = 0.0;
+  FLOAT std_dev = 0.0;
+  FLOAT median = 0.0;
+  
+  MKL_INT p, n, xstorage;
   
   // enable mic if possible
- // mkl_mic_enable();
+  char *file_input = "result.out";
   
   // initialize vector 1 and histogram vec1
   Vector v1;
   Vector *pVec1 = &v1;
-  mapFileToMemory(argv[1], pVec1);
+  mapFileToMemory(file_input, pVec1);
   initVectorArray(pVec1, DEF_SIZE);
   storeVectorToArray(pVec1);
   unmapFile(pVec1);
-  // computeHistogram(pVec1, MAX_VAL, MIN_VAL);
 
+  // important need to convert all array numbers to positive value before
+  // computations
+  FLOAT *add20, *sub20;
+  initOffsetArrays(add20, sub20, pVec1->size);
+
+  vsadd(pVec1->size, pVec1->arr, add20, pVec2->arr);
+  
+  // initialize MKL variables
+  p = 1;    // this is the number of tasks (doc says variables)
+  n = pVec1->size;
+  xstorage = VSL_SS_MATRIX_STORAGE_ROWS;
+  
   // compute vectorsum and histrogram vec3
   Vector v2;
   Vector *pVec2 = &v2;
   initVectorArray(pVec2, pVec1->size);    // vec sizes must be same at this pt.
   
-  // writeOutput(pVec3);
+  // undo the addition done in convertArrayToPosValues()
+  free(pVec1->arr)  // first clear out values for array to store result
+  vsadd(pVec2->size, pVec2->arr, sub20, pVec1->arr);
+  // writeOutput(pVec1);
     
-  // write histogram output
-  // writeHistOutput(pVec1, "hist.a");
-  // writeHistOutput(pVec2, "hist.b");
-  // writeHistOutput(pVec3, "hist.c");
-
   // free allocated vector arrays
   free(pVec1->arr);
   free(pVec2->arr);
-  // free(pVec3->arr);    // causing segfault for some reason
- 
-  // free allocated histogram arrays
-  // free(pVec1->hist);
-  // free(pVec2->hist);
-  // free(pVec3->hist);   // causing segfault for some reason
 
   return 0;
 }
