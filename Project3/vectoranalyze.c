@@ -20,10 +20,14 @@
 
 typedef struct{
   FLOAT *arr;
-  // int *hist;
   int mmapFileSize;
   char *mmapFileLoc;
   int size;
+  FLOAT min_value = 0.0;
+  FLOAT max_value = 0.0;
+  FLOAT mean = 0.0;
+  FLOAT std_dev = 0.0;
+  FLOAT median = 0.0;
 } Vector;
 
 /**
@@ -222,16 +226,7 @@ int main( int argc, char **argv ) {
     exit(1);
   }
 
-  VSLSSTaskPtr task;
-  FLOAT min_value = 0.0;
-  FLOAT max_value = 0.0;
-  FLOAT mean = 0.0;
-  FLOAT std_dev = 0.0;
-  FLOAT median = 0.0;
-  
-  MKL_INT p, n, xstorage;
-  
-  // enable mic if possible
+
   char *file_input = "result.out";
   
   // initialize vector 1 and histogram vec1
@@ -242,14 +237,16 @@ int main( int argc, char **argv ) {
   storeVectorToArray(pVec1);
   unmapFile(pVec1);
 
-  Vector v2;
-  Vector *pVec2 = &v2;
-  initVectorArray(pVec2, pVec1->size);
+  // Vector v2;
+  // Vector *pVec2 = &v2;
+  // initVectorArray(pVec2, pVec1->size);
 
   // initialize MKL variables
-  p = 1;    // this is the number of tasks (doc says variables)
-  n = pVec1->size;
-  xstorage = VSL_SS_MATRIX_STORAGE_ROWS;
+  VSLSSTaskPtr task;
+  MKL_INT num_tasks = 1;
+  MKL_INT obs_size = pVec1->size;
+  MKL_INT xstorage = VSL_SS_MATRIX_STORAGE_ROWS;
+  FLOAT *weight = 0;
   
   // compute the following:
     // Minimum value
@@ -260,11 +257,17 @@ int main( int argc, char **argv ) {
     // output a sorted (ascending order) copy of the array.
     
   // Step 1. create the task
-  errcode = vslsSSNewTask(&task, &p, &n, &xstorage, x, w, 0);
+  errcode = vslsSSNewTask(&task, &num_tasks, &observation_size, &xstorage, 
+                          pVec1->arr, weight, 0);
       
-  // before writing output, know that you must subtract 20 from each value
-  // before outputting
-  // writeOutput(pVec2);
+  // Step 2. edit task parameters
+  
+  // step 3. computation of serveral estimates using 1PASS method
+  
+  // step 4. de-allocate task resources
+  status = vslSSDeleteTask(&task);
+  
+  // writeOutput(pVec1);
     
   // free allocated vector arrays
   free(pVec1->arr);
