@@ -8,6 +8,7 @@
 #include <string.h>
 #include <math.h>
 #include <mkl_vsl.h>
+#include <mkl.h>
 
 // #define NUM_BINS 40.0
 // #define NUM_BINS_SUM 80.0
@@ -175,9 +176,9 @@ void doubleArraySize(Vector *vec) {
 * If array holding Vector data is not big enough create a new one twice as big.
 * Copy old array data to new array, and free old array from memory.
 */
-void initOffsetArrays(FLOAT *arr1, int size) {
+void initOffsetArray(FLOAT *arr1, int size) {
   // malloc new array, double the size of previous array
-  FLOAT *arr1 = (FLOAT *) malloc(sizeof(FLOAT) * size);
+  arr1 = (FLOAT *) malloc(sizeof(FLOAT) * size);
 
   if (arr1 == NULL) {
     perror("Error, couldn't allocate space for array\n");
@@ -185,7 +186,7 @@ void initOffsetArrays(FLOAT *arr1, int size) {
   }
 
   // fill array with +20.0 so every value is positive
-  memset(arr1, MAX_VALUE_SUM, sizeof(FLOAT) * size);
+  memset(arr1, MAX_VAL_SUM, sizeof(FLOAT) * size);
 }
 
 /**
@@ -226,13 +227,13 @@ void storeVectorToArray(Vector *vec){
   vec->size = localSize;
 }
 
-void errorCheckVectors(Vector *vec1, Vector *vec2){
-  if (vec1->size != vec2->size){
-    fprintf(stderr, "Error: vectors are not compatible size\n");
-    fprintf(stderr, "vec1 size %d, vec2 size %d\n", vec1->size, vec2->size);
-    exit(1);
-  }
-}
+// void errorCheckVectors(Vector *vec1, Vector *vec2){
+//   if (vec1->size != vec2->size){
+//     fprintf(stderr, "Error: vectors are not compatible size\n");
+//     fprintf(stderr, "vec1 size %d, vec2 size %d\n", vec1->size, vec2->size);
+//     exit(1);
+//   }
+// }
 
 int main( int argc, char **argv ) {
   // exit if not enough arguments
@@ -268,8 +269,8 @@ int main( int argc, char **argv ) {
   // important need to convert all array numbers to positive value before
   // computations
   FLOAT *add20;
-  initOffsetArrays(add20, pVec1->size);
-  vsadd(pVec1->size, pVec1->arr, add20, pVec2->arr);
+  initOffsetArray(add20, pVec1->size);
+  vsAdd(pVec1->size, pVec1->arr, add20, pVec2->arr);
   
   // initialize MKL variables
   p = 1;    // this is the number of tasks (doc says variables)
