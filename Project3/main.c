@@ -9,7 +9,7 @@
 #include <math.h>
 
 #define NUM_BINS 40
-#define NUM_BINS_SUM 80
+// #define NUM_BINS_SUM 80
 #define MAX_VAL 10
 #define MIN_VAL -10
 #define MAX_VAL_SUM 20
@@ -27,33 +27,47 @@ typedef struct{
 /**
  * Compute histogram for a given vector
  */
-void computeHistogram(Vector *v, int max, int min, int numBins)
+void computeHistogram(Vector *v, int max, int min)
 {
     // fprintf(stderr, "comp hist for vector size: %d", v->size);
     int vectorIndex = 0;
     int binIndex = 0;
     int spread = max - min;
-    FLOAT binWidth =  ((FLOAT) spread) / numBins;
+    FLOAT binWidth =  ((FLOAT) spread) / NUM_BINS;
     
     // Create the bins
-    v->hist = malloc(sizeof(int) * numBins);
+    v->hist = malloc(sizeof(int) * NUM_BINS);
     
     // set all bins to zero
-    memset(v->hist, 0, sizeof(int) * numBins);
+    memset(v->hist, 0, sizeof(int) * NUM_BINS);
     
-    for(vectorIndex = 0; vectorIndex < v->size; vectorIndex++)
-    {
-        //Compute bin
-        if(v->arr[vectorIndex] == max)
-        {
-            v->hist[numBins - 1]++;
-        }
-        else
-        {
-            binIndex = (v->arr[vectorIndex] - min) / binWidth;
-            v->hist[binIndex]++;
-        }
-    }
+    FLOAT *v1 = v->arr;
+    int *v2 = v->hist;
+    int length = v->size;
+    
+    // int num_coprocs = _Offload_number_of_devices();
+    
+    // #pragma offload target(mic) in(v1:length(v->size)) \
+    //                             in(v2:length(NUM_BINS)) \
+    //                             in(length) \
+    //                             out(v2:length(NUM_BINS)) 
+    // #pragma omp parallel private(length) 
+    // {
+    //   #pragma omp for schedule(static)
+      for(vectorIndex = 0; vectorIndex < length; vectorIndex++)
+      {
+          //Compute bin
+          if(v1[vectorIndex] == max)
+          {
+              v2[NUM_BINS - 1]++;
+          }
+          else
+          {
+              binIndex = (v1[vectorIndex] - min) / binWidth;
+              v2[binIndex]++;
+          }
+      }
+  //  }
 }
 
 
@@ -64,7 +78,9 @@ void addVectors(Vector *v1, Vector *v2, Vector *out)
 {
     int vectorIndex;
 
-    #pragma offload target(mic) in(v1:length(v1->size)) in(v2:length(v2->size)) out(out:length(v1->size)) 
+    //#pragma offload target(mic) in(v1:length(v1->size)) \
+     //                           in(v2:length(v2->size)) \
+       //                         out(out:length(v1->size)) 
     for(vectorIndex = 0; vectorIndex < v1->size; vectorIndex++)
     {
         out->arr[vectorIndex] = v1->arr[vectorIndex] + v2->arr[vectorIndex];
@@ -151,7 +167,7 @@ void printVector(Vector *vec) {
 * Write results to a file named "results.out"
 * Data in mat is stored row-major order.
 */
-void writeHistOutput(Vector *vec, char *fileName, int numBins){
+void writeHistOutput(Vector *vec, char *fileName){
   FILE* ofp;
   ofp = fopen(fileName, "w");
   if(ofp == NULL) {
@@ -160,9 +176,9 @@ void writeHistOutput(Vector *vec, char *fileName, int numBins){
   }
 
   int i;
-  for(i = 0; i < numBins; i++){
+  for(i = 0; i < NUM_BINS; i++){
     fprintf(ofp, "%d, %d", i, vec->hist[i]);
-    if (i < numBins - 1) {
+    if (i < NUM_BINS - 1) {
       fprintf(ofp, "\n");
     }
   }
@@ -267,6 +283,9 @@ int main( int argc, char **argv ) {
     exit(1);
   }
   
+  // enable mic if possible
+ // mkl_mic_enable();
+  
   // initialize vector 1 and histogram vec1
   Vector v1;
   Vector *pVec1 = &v1;
@@ -274,7 +293,7 @@ int main( int argc, char **argv ) {
   initVectorArray(pVec1, DEF_SIZE);
   storeVectorToArray(pVec1);
   unmapFile(pVec1);
-  computeHistogram(pVec1, MAX_VAL, MIN_VAL, NUM_BINS);
+  computeHistogram(pVec1, MAX_VAL, MIN_VAL);
 
   // initialize vector 2 and histogram vec2
   Vector v2;
@@ -283,7 +302,7 @@ int main( int argc, char **argv ) {
   initVectorArray(pVec2, DEF_SIZE);
   storeVectorToArray(pVec2);
   unmapFile(pVec2);
-  computeHistogram(pVec2, MAX_VAL, MIN_VAL, NUM_BINS);
+  computeHistogram(pVec2, MAX_VAL, MIN_VAL);
 
   // error check vectors
   errorCheckVectors(pVec1, pVec2);
@@ -293,13 +312,13 @@ int main( int argc, char **argv ) {
   Vector *pVec3 = &v3;
   initVectorArray(pVec3, pVec1->size);    // vec sizes must be same at this pt.
   addVectors(pVec1, pVec2, pVec3);
-  computeHistogram(pVec3, MAX_VAL_SUM, MIN_VAL_SUM, NUM_BINS_SUM);
+  computeHistogram(pVec3, MAX_VAL_SUM, MIN_VAL_SUM);
   writeOutput(pVec3);
     
   // write histogram output
-  writeHistOutput(pVec1, "hist.a", NUM_BINS);
-  writeHistOutput(pVec2, "hist.b", NUM_BINS);
-  writeHistOutput(pVec3, "hist.c", NUM_BINS_SUM);
+  writeHistOutput(pVec1, "hist.a");
+  writeHistOutput(pVec2, "hist.b");
+  writeHistOutput(pVec3, "hist.c");
 
   // free allocated vector arrays
   free(pVec1->arr);
