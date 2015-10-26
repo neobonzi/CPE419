@@ -9,7 +9,6 @@
 #include <math.h>
 
 #define NUM_BINS 40
-#define NUM_BINS_SUM 80
 #define MAX_VAL 10
 #define MIN_VAL -10
 #define MAX_VAL_SUM 20
@@ -27,26 +26,26 @@ typedef struct{
 /**
  * Compute histogram for a given vector
  */
-void computeHistogram(Vector *v, int max, int min, int numBins)
+void computeHistogram(Vector *v, int max, int min)
 {
     // fprintf(stderr, "comp hist for vector size: %d", v->size);
     int vectorIndex = 0;
     int binIndex = 0;
     int spread = max - min;
-    FLOAT binWidth =  ((FLOAT) spread) / numBins;
+    FLOAT binWidth =  ((FLOAT) spread) / NUMBINS;
     
     // Create the bins
-    v->hist = malloc(sizeof(int) * numBins);
+    v->hist = malloc(sizeof(int) * NUMBINS);
     
     // set all bins to zero
-    memset(v->hist, 0, sizeof(int) * numBins);
+    memset(v->hist, 0, sizeof(int) * NUMBINS);
     
     for(vectorIndex = 0; vectorIndex < v->size; vectorIndex++)
     {
         //Compute bin
         if(v->arr[vectorIndex] == max)
         {
-            v->hist[numBins - 1]++;
+            v->hist[NUMBINS - 1]++;
         }
         else
         {
@@ -274,7 +273,7 @@ int main( int argc, char **argv ) {
   initVectorArray(pVec1, DEF_SIZE);
   storeVectorToArray(pVec1);
   unmapFile(pVec1);
-  computeHistogram(pVec1, MAX_VAL, MIN_VAL, NUM_BINS);
+  computeHistogram(pVec1, MAX_VAL, MIN_VAL);
 
   // initialize vector 2 and histogram vec2
   Vector v2;
@@ -283,7 +282,7 @@ int main( int argc, char **argv ) {
   initVectorArray(pVec2, DEF_SIZE);
   storeVectorToArray(pVec2);
   unmapFile(pVec2);
-  computeHistogram(pVec2, MAX_VAL, MIN_VAL, NUM_BINS);
+  computeHistogram(pVec2, MAX_VAL, MIN_VAL);
 
   // error check vectors
   errorCheckVectors(pVec1, pVec2);
@@ -293,13 +292,13 @@ int main( int argc, char **argv ) {
   Vector *pVec3 = &v3;
   initVectorArray(pVec3, pVec1->size);    // vec sizes must be same at this pt.
   addVectors(pVec1, pVec2, pVec3);
-  computeHistogram(pVec3, MAX_VAL_SUM, MIN_VAL_SUM, NUM_BINS_SUM);
+  computeHistogram(pVec3, MAX_VAL_SUM, MIN_VAL_SUM);
   writeOutput(pVec3);
     
   // write histogram output
   writeHistOutput(pVec1, "hist.a", NUM_BINS);
   writeHistOutput(pVec2, "hist.b", NUM_BINS);
-  writeHistOutput(pVec3, "hist.c", NUM_BINS_SUM);
+  writeHistOutput(pVec3, "hist.c", NUM_BINS);
 
   // free allocated vector arrays
   free(pVec1->arr);
