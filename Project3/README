@@ -1,22 +1,26 @@
-CPE 419 - Fall 2015 Project 2, Parts A-C
+CPE 419 - Fall 2015 Project 3
 
-This program builds on top of a serial matrix multiply algorithm by adding
-OpenMP directives to let the compiler know where to parallelize execution.
+This program is comprised of two portions.
 
-Furthermore, the executable my-omp-env uses OpenMP functions to query the
-system for information regarding number and max amount of threads available, 
-number of processors available, whether currently in a parallel code segment,
-whether dynamic threads allocation is allowed and whether nested parallelism
-is supported. 
+The first, vectorsum, takes as input two vectors and produces:
+    1. A vector addition of the two input vectors (result.out)
+    2. A histogram of the first vector (hist.a)
+    3. A histogram of the second vector (hist.b)
+    4. A histogram of the vector sum of the two input vectors (hist.c)
+
+The second, vectoranalyze, computes several properties of the result matrix
+from vectorsum:
+    1. Minimum Value
+    2. Maximum Value
+    3. Mean
+    4. Standard Deviation
+    5. Median
+    6. Sorted version of the array.
 
 Compilation options:
 
 make                    // makes both files as specified in spec.
-make single             // single-precision
-make single-col         // single-precision, matrix 2 in column-major
-make double             // double-precision
-make double-col         // double-precision, matrix 2 in column-major
-make ompenv             // make program which prints OpenMP environment specs.
+make 
 
 Execute with:
 

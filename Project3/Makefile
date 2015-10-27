@@ -1,4 +1,4 @@
-FLAGS=-O3 -g -mkl -debug inline-debug-info -qopenmp
+FLAGS=-O3 -qopt-report=3 -restrict -g -mkl -debug inline-debug-info -qopenmp
 SRCFILES=vectorsum.c 
 SRCFILES2=vectoranalyze.c
 

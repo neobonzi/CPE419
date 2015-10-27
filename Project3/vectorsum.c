@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <string.h>
+#include <mkl.h>
 #include <math.h>
 
 #define NUM_BINS 40
@@ -27,7 +28,7 @@ typedef struct{
 /**
  * Compute histogram for a given vector
  */
-void computeHistogram(Vector *v, int max, int min)
+void computeHistogram(Vector* restrict v, int max, int min)
 {
     // fprintf(stderr, "comp hist for vector size: %d", v->size);
     int vectorIndex = 0;
@@ -47,13 +48,9 @@ void computeHistogram(Vector *v, int max, int min)
     
     // int num_coprocs = _Offload_number_of_devices();
     
-    // #pragma offload target(mic) in(v1:length(v->size)) \
-    //                             in(v2:length(NUM_BINS)) \
-    //                             in(length) \
-    //                             out(v2:length(NUM_BINS)) 
-    // #pragma omp parallel private(length) 
-    // {
-    //   #pragma omp for schedule(static)
+      #pragma offload target(mic) in(v1:length(v->size)) \
+                                 inout(v2:length(NUM_BINS)) \
+                                 in(length) 
       for(vectorIndex = 0; vectorIndex < length; vectorIndex++)
       {
           //Compute bin
@@ -74,13 +71,13 @@ void computeHistogram(Vector *v, int max, int min)
 /**
  * Add two vectors and place the result in an output vector
  */
-void addVectors(Vector *v1, Vector *v2, Vector *out)
+void addVectors(Vector* restrict v1, Vector* restrict v2, Vector* restrict out)
 {
     int vectorIndex;
 
-    //#pragma offload target(mic) in(v1:length(v1->size)) \
-     //                           in(v2:length(v2->size)) \
-       //                         out(out:length(v1->size)) 
+    #pragma offload target(mic) in(v1:length(v1->size)) \
+                                in(v2:length(v2->size)) \
+                                out(out:length(v1->size)) 
     for(vectorIndex = 0; vectorIndex < v1->size; vectorIndex++)
     {
         out->arr[vectorIndex] = v1->arr[vectorIndex] + v2->arr[vectorIndex];
@@ -91,7 +88,7 @@ void addVectors(Vector *v1, Vector *v2, Vector *out)
 * This function will take a filename and map its contents into memory for 
 * faster access.
 */
-int mapFileToMemory(char* fName, Vector *vec){
+int mapFileToMemory(char* restrict fName, Vector* restrict vec){
   int fd, size;
   char *map;
   struct stat st;
@@ -283,9 +280,6 @@ int main( int argc, char **argv ) {
     exit(1);
   }
   
-  // enable mic if possible
- // mkl_mic_enable();
-  
   // initialize vector 1 and histogram vec1
   Vector v1;
   Vector *pVec1 = &v1;
@@ -311,7 +305,8 @@ int main( int argc, char **argv ) {
   Vector v3;
   Vector *pVec3 = &v3;
   initVectorArray(pVec3, pVec1->size);    // vec sizes must be same at this pt.
-  addVectors(pVec1, pVec2, pVec3);
+  //addVectors(pVec1, pVec2, pVec3);
+  vsAdd(pVec1->size, pVec1->arr, pVec2->arr, pVec3->arr); 
   computeHistogram(pVec3, MAX_VAL_SUM, MIN_VAL_SUM);
   writeOutput(pVec3);
     
@@ -323,12 +318,12 @@ int main( int argc, char **argv ) {
   // free allocated vector arrays
   free(pVec1->arr);
   free(pVec2->arr);
-  // free(pVec3->arr);    // causing segfault for some reason
+  free(pVec3->arr);    // causing segfault for some reason
  
   // free allocated histogram arrays
   free(pVec1->hist);
   free(pVec2->hist);
-  // free(pVec3->hist);   // causing segfault for some reason
+  free(pVec3->hist);   // causing segfault for some reason
 
   return 0;
 }
