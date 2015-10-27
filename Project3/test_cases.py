@@ -4,7 +4,7 @@ from subprocess import call
 
 # make single-precision
 call(['make','clean'])
-call(['make'])
+call(['make', 'vectorsum'])
 print
 
 # Test 1

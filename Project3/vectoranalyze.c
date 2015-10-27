@@ -76,48 +76,49 @@ int unmapFile(Vector *vec){
 */
 void writeOutput(Vector *vec){
   FILE* ofp;
-  ofp = fopen("result.out", "w");
+  ofp = fopen("analysis.out", "w");
   if(ofp == NULL) {
     perror("Could not open result.out to write results");
     exit(1);
   }
 
   // Minimum value
-  fprintf(ofp, "Minimum value: %.2d\n", vec->min_value);
+  fprintf(ofp, "Minimum value: %.2f\n", vec->min_value);
   
   // Maximum value
-  fprintf(ofp, "Maximum value: %.2d\n", vec->max_value);
+  fprintf(ofp, "Maximum value: %.2f\n", vec->max_value);
   
   // Mean
-  fprintf(ofp, "Mean: %.2d\n", vec->mean);
+  fprintf(ofp, "Mean: %.2f\n", vec->mean);
   
   // Standard Deviation
-  fprintf(ofp, "Standard Deviation: %.2d\n", vec->std_dev);
+  fprintf(ofp, "Standard Deviation: %.2f\n", vec->std_dev);
   
   // Median
-  fprintf(ofp, "Median: %.2d\n", vec->median);
-  
-  // output a sorted (ascending order) copy of the array.
-  fprintf(ofp, "Mean: %.2d\n", vec->arr);
-  
-  int i;
-  for(i = 0; i < vec->size; i++){
-    fprintf(ofp, "%.2f ", vec->arr[i]);
-  }
+  // fprintf(ofp, "Median: %.2f\n", vec->median);
+  // 
+  // // output a sorted (ascending order) copy of the array.
+  // fprintf(ofp, "Array: ");
+  // int i;
+  // for(i = 0; i < vec->size; i++){
+  //   fprintf(ofp, "%.2f ", vec->arr[i]);
+  // }
+  // 
+  // fprintf(ofp, "\n");
 
   // close output file pointer
-  //fclose(ofp);   // this line is causing a segfault, not sure why
+  fclose(ofp);   // this line is causing a segfault, not sure why
 }
 
 /**
 * Print the contents of matrix to stdout for debugging
 */
-// void printVector(Vector *vec) {
-//   int i;
-//   for(i = 0; i < vec->size; i++){
-//     printf("%.2f ", vec->arr[i]);
-//   }
-// }
+void printVector(Vector *vec) {
+  int i;
+  for(i = 0; i < vec->size; i++){
+    printf("%.2f ", vec->arr[i]);
+  }
+}
 
 /**
 * Initialize an array in memory to hold vecrix data.
@@ -200,6 +201,35 @@ void storeVectorToArray(Vector *vec){
   vec->size = localSize;
 }
 
+void findMedian(Vector *vec) {
+  int size = vec->size;
+  // find the median value of vec->arr
+  if (size % 2 == 1) {
+    // odd sized array 
+    int idx = (size - 1) / 2;
+    vec->median = vec->arr[idx];
+  } else {
+    int idx1 = size / 2;
+    int idx2 = idx1 - 1;
+    vec->median = (vec->arr[idx1] + vec->arr[idx2] / 2);
+  }
+}
+
+void calcStandardDeviation(Vector *vec) {
+  // create temp array to hold interim values
+  double sum = 0.0;
+
+  // calculate the sum of all (arr[i] - mean) ^2
+  int i;
+  for (i = 0; i < vec->size; i++) {
+    sum += pow(vec->arr[i] - vec->mean, 2);
+  }
+  
+  // take square root of ( sum / size - 1)
+  double frac = sum / (vec->size - 1);
+  vec->std_dev = sqrt(frac);
+}
+
 /**
 * Compare function for qsort. 
 * Return val < 0, num1 goes before num2
@@ -213,7 +243,7 @@ int compare(const void *num1, const void *num2){
 }
 
 int main( int argc, char **argv ) {
-  char *file_input = "result.out";
+  char *file_input = "input/result1.in";
   
   // initialize vector 1 and histogram vec1
   Vector v1;
@@ -229,7 +259,6 @@ int main( int argc, char **argv ) {
   MKL_INT obs_size = pVec1->size;
   MKL_INT xstorage = VSL_SS_MATRIX_STORAGE_ROWS;
   int status;
-  double *weight = 0;
   
   // compute the following:
     // Minimum value
@@ -240,31 +269,32 @@ int main( int argc, char **argv ) {
     // output a sorted (ascending order) copy of the array.
     
   // Step 1. create the task
-  status = vsldSSNewTask(&task, &num_tasks, &obs_size, &xstorage, pVec1->arr, 
-                         weight, 0);
+  status = vsldSSNewTask(&task, &num_tasks, &obs_size, &xstorage, pVec1->arr, 0, 0);
       
   // Step 2. edit task parameters
   status = vsldSSEditTask(task, VSL_SS_ED_MIN, &(pVec1->min_value));
   status = vsldSSEditTask(task, VSL_SS_ED_MAX, &(pVec1->max_value));
   status = vsldSSEditTask(task, VSL_SS_ED_MEAN, &(pVec1->mean));
-  status = vsldSSEditTask(task, VSL_SS_ED_VARIATION, &(pVec1->covariance));
   
   // step 3. computation of serveral estimates using 1PASS method
-  MKL_INT estimates = VSL_SS_ED_MIN|VSL_SS_ED_MAX|VSL_SS_ED_MEAN|VSL_SS_ED_VARIATION;
+  MKL_INT64 estimates = VSL_SS_MIN|VSL_SS_MAX|VSL_SS_MEAN;
   status = vsldSSCompute(task, estimates, VSL_SS_METHOD_1PASS);
   
   // step 4. de-allocate task resources
   status = vslSSDeleteTask(&task);
   
   // compute standard deviation using variance & mean
-  pVec1->std_dev = pVec1->covariance * pVec1->mean;
+  calcStandardDeviation(pVec1);
   
   // sort array ascending order
   qsort(pVec1->arr, pVec1->size, sizeof(float), compare);
   
+  // find the median after sorting the array
+  findMedian(pVec1);
+  
   // write output
   writeOutput(pVec1);
-    
+  
   // free allocated vector arrays
   free(pVec1->arr);
 

@@ -7,8 +7,8 @@ all:	vectorsum vectoranalyze
 vectorsum:  $(SRCFILES) 
 	icc $(FLAGS) -o vectorsum $^ 
 
-vectorsum_mic:  $(SRCFILES) 
-	icc -mmic $(FLAGS) -o vectorsum $^  
+# vectorsum_mic:  $(SRCFILES) 
+# 	icc -mmic $(FLAGS) -o vectorsum $^  
 
 vectoranalyze:  $(SRCFILES2) 
 	icc $(FLAGS) -o vectoranalyze $^  
