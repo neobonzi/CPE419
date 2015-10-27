@@ -76,7 +76,7 @@ int unmapFile(Vector *vec){
 */
 void writeOutput(Vector *vec){
   FILE* ofp;
-  ofp = fopen("analysis.out", "w");
+  ofp = fopen("analyze.out", "w");
   if(ofp == NULL) {
     perror("Could not open result.out to write results");
     exit(1);
@@ -95,16 +95,16 @@ void writeOutput(Vector *vec){
   fprintf(ofp, "Standard Deviation: %.2f\n", vec->std_dev);
   
   // Median
-  // fprintf(ofp, "Median: %.2f\n", vec->median);
-  // 
-  // // output a sorted (ascending order) copy of the array.
-  // fprintf(ofp, "Array: ");
-  // int i;
-  // for(i = 0; i < vec->size; i++){
-  //   fprintf(ofp, "%.2f ", vec->arr[i]);
-  // }
-  // 
-  // fprintf(ofp, "\n");
+  fprintf(ofp, "Median: %.2f\n", vec->median);
+  
+  // output a sorted (ascending order) copy of the array.
+  fprintf(ofp, "Array: ");
+  int i;
+  for(i = 0; i < vec->size; i++){
+    fprintf(ofp, "%.2f ", vec->arr[i]);
+  }
+  
+  fprintf(ofp, "\n");
 
   // close output file pointer
   fclose(ofp);   // this line is causing a segfault, not sure why
@@ -211,7 +211,7 @@ void findMedian(Vector *vec) {
   } else {
     int idx1 = size / 2;
     int idx2 = idx1 - 1;
-    vec->median = (vec->arr[idx1] + vec->arr[idx2] / 2);
+    vec->median = (vec->arr[idx1] + vec->arr[idx2]) / 2;
   }
 }
 
@@ -237,8 +237,8 @@ void calcStandardDeviation(Vector *vec) {
 * Return val < 0, num2 goes before num1
 */
 int compare(const void *num1, const void *num2){
-  float fnum1 = *(const float*) num1;
-  float fnum2 = *(const float*) num2;
+  double fnum1 = *(const double*) num1;
+  double fnum2 = *(const double*) num2;
   return (fnum1 > fnum2) - (fnum1 < fnum2);
 }
 
@@ -259,14 +259,6 @@ int main( int argc, char **argv ) {
   MKL_INT obs_size = pVec1->size;
   MKL_INT xstorage = VSL_SS_MATRIX_STORAGE_ROWS;
   int status;
-  
-  // compute the following:
-    // Minimum value
-    // Maximum value
-    // Mean
-    // Standard Deviation
-    // Median
-    // output a sorted (ascending order) copy of the array.
     
   // Step 1. create the task
   status = vsldSSNewTask(&task, &num_tasks, &obs_size, &xstorage, pVec1->arr, 0, 0);
@@ -287,7 +279,7 @@ int main( int argc, char **argv ) {
   calcStandardDeviation(pVec1);
   
   // sort array ascending order
-  qsort(pVec1->arr, pVec1->size, sizeof(float), compare);
+  qsort(pVec1->arr, pVec1->size, sizeof(double), compare);
   
   // find the median after sorting the array
   findMedian(pVec1);

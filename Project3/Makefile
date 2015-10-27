@@ -14,5 +14,5 @@ vectoranalyze:  $(SRCFILES2)
 	icc $(FLAGS) -o vectoranalyze $^  
 			
 clean: 
-	rm -f *.o vectorsum vectoranalyze result.out hist.a hist.b hist.c
+	rm -f *.o vectorsum vectoranalyze result.out hist.a hist.b hist.c analyze.out
 
