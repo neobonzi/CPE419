@@ -23,11 +23,12 @@ typedef struct{
   int mmapFileSize;
   char *mmapFileLoc;
   int size;
-  FLOAT min_value = 0.0;
-  FLOAT max_value = 0.0;
-  FLOAT mean = 0.0;
-  FLOAT std_dev = 0.0;
-  FLOAT median = 0.0;
+  FLOAT min_value;
+  FLOAT max_value;
+  FLOAT mean;
+  FLOAT std_dev;
+  FLOAT median;
+  FLOAT covariance;
 } Vector;
 
 /**
@@ -246,6 +247,7 @@ int main( int argc, char **argv ) {
   MKL_INT num_tasks = 1;
   MKL_INT obs_size = pVec1->size;
   MKL_INT xstorage = VSL_SS_MATRIX_STORAGE_ROWS;
+  int status;
   FLOAT *weight = 0;
   
   // compute the following:
@@ -257,12 +259,18 @@ int main( int argc, char **argv ) {
     // output a sorted (ascending order) copy of the array.
     
   // Step 1. create the task
-  errcode = vslsSSNewTask(&task, &num_tasks, &observation_size, &xstorage, 
-                          pVec1->arr, weight, 0);
+  status = vslsSSNewTask(&task, &num_tasks, &obs_size, &xstorage, pVec1->arr, 
+                         weight, 0);
       
   // Step 2. edit task parameters
+  status = vslsSSEditTask(task, VSL_SS_ED_MIN, &(pVec1->min_value));
+  status = vslsSSEditTask(task, VSL_SS_ED_MAX, &(pVec1->max_value));
+  status = vslsSSEditTask(task, VSL_SS_ED_MEAN, &(pVec1->mean));
+  status = vslsSSEditTask(task, VSL_SS_ED_VARIATION, &(pVec1->covariance));
   
   // step 3. computation of serveral estimates using 1PASS method
+  MKL_INT estimates = VSL_SS_ED_MIN|VSL_SS_ED_MAX|VSL_SS_ED_MEAN|VSL_SS_ED_VARIATION;
+  status = vslsSSCompute(task, estimates, VSL_SS_METHOD_1PASS);
   
   // step 4. de-allocate task resources
   status = vslSSDeleteTask(&task);
@@ -271,7 +279,6 @@ int main( int argc, char **argv ) {
     
   // free allocated vector arrays
   free(pVec1->arr);
-  free(pVec2->arr);
 
   return 0;
 }
