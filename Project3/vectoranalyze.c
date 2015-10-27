@@ -19,16 +19,16 @@
 #define DEF_SIZE 2
 
 typedef struct{
-  FLOAT *arr;
+  double *arr;
   int mmapFileSize;
   char *mmapFileLoc;
   int size;
-  FLOAT min_value;
-  FLOAT max_value;
-  FLOAT mean;
-  FLOAT std_dev;
-  FLOAT median;
-  FLOAT covariance;
+  double min_value;
+  double max_value;
+  double mean;
+  double std_dev;
+  double median;
+  double covariance;
 } Vector;
 
 /**
@@ -137,7 +137,7 @@ void writeOutput(Vector *vec){
 void initVectorArray(Vector *vec, int initSize) {
   vec->size = initSize;
 
-  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * vec->size);
+  double *newArray = (double *) malloc(sizeof(double) * vec->size);
 
   if (newArray == NULL) {
     perror("Error, couldn't allocate space for array");
@@ -154,7 +154,7 @@ void initVectorArray(Vector *vec, int initSize) {
 */
 void doubleArraySize(Vector *vec) {
   // malloc new array, double the size of previous array
-  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * vec->size * 2);
+  double *newArray = (double *) malloc(sizeof(double) * vec->size * 2);
 
   if (newArray == NULL) {
     perror("Error, couldn't allocate space for array\n");
@@ -162,7 +162,7 @@ void doubleArraySize(Vector *vec) {
   }
 
   // copy old array to newArray
-  newArray = (FLOAT*) memcpy(newArray, vec->arr, sizeof(FLOAT) * vec->size);
+  newArray = (double*) memcpy(newArray, vec->arr, sizeof(double) * vec->size);
 
   // update size of array
   vec->size *= 2;
@@ -176,12 +176,12 @@ void doubleArraySize(Vector *vec) {
 
 /**
 * Read values from memory mapped location into an array for processing.
-* This function reads in the characters and converts them to FLOATs or doubles
+* This function reads in the characters and converts them to doubles or doubles
 * before storing in the array.
 */
 void storeVectorToArray(Vector *vec){
   int mmapIdx = 0, bfrIdx = 0, arrIdx = 0, localSize = 0;
-  char buffer[100];    // buffer to hold FLOAT up to 99 digits long
+  char buffer[100];    // buffer to hold double up to 99 digits long
 
   for(mmapIdx = 0; mmapIdx < vec->mmapFileSize; mmapIdx++) {
     if(vec->mmapFileLoc[mmapIdx] == ' '){ // found a number, store into Vector
@@ -193,8 +193,8 @@ void storeVectorToArray(Vector *vec){
         doubleArraySize(vec);
       }
 
-      // convert char buffer to FLOAT and store in Vector array
-      vec->arr[arrIdx++] = (FLOAT) atof(buffer);
+      // convert char buffer to double and store in Vector array
+      vec->arr[arrIdx++] = (double) atof(buffer);
       
       // increment size variable
       localSize++;
@@ -205,7 +205,7 @@ void storeVectorToArray(Vector *vec){
     } 
 
     /* grab a character at each loop iteration and store into buffer[] to 
-    conv to FLOAT */
+    conv to double */
     buffer[bfrIdx++] = vec->mmapFileLoc[mmapIdx];
   }
   
@@ -227,7 +227,6 @@ int main( int argc, char **argv ) {
     exit(1);
   }
 
-
   char *file_input = "result.out";
   
   // initialize vector 1 and histogram vec1
@@ -248,7 +247,7 @@ int main( int argc, char **argv ) {
   MKL_INT obs_size = pVec1->size;
   MKL_INT xstorage = VSL_SS_MATRIX_STORAGE_ROWS;
   int status;
-  FLOAT *weight = 0;
+  double *weight = 0;
   
   // compute the following:
     // Minimum value
@@ -259,23 +258,23 @@ int main( int argc, char **argv ) {
     // output a sorted (ascending order) copy of the array.
     
   // Step 1. create the task
-  status = vslsSSNewTask(&task, &num_tasks, &obs_size, &xstorage, pVec1->arr, 
+  status = vsldSSNewTask(&task, &num_tasks, &obs_size, &xstorage, pVec1->arr, 
                          weight, 0);
       
   // Step 2. edit task parameters
-  status = vslsSSEditTask(task, VSL_SS_ED_MIN, &(pVec1->min_value));
-  status = vslsSSEditTask(task, VSL_SS_ED_MAX, &(pVec1->max_value));
-  status = vslsSSEditTask(task, VSL_SS_ED_MEAN, &(pVec1->mean));
-  status = vslsSSEditTask(task, VSL_SS_ED_VARIATION, &(pVec1->covariance));
+  status = vsldSSEditTask(task, VSL_SS_ED_MIN, &(pVec1->min_value));
+  status = vsldSSEditTask(task, VSL_SS_ED_MAX, &(pVec1->max_value));
+  status = vsldSSEditTask(task, VSL_SS_ED_MEAN, &(pVec1->mean));
+  status = vsldSSEditTask(task, VSL_SS_ED_VARIATION, &(pVec1->covariance));
   
   // step 3. computation of serveral estimates using 1PASS method
   MKL_INT estimates = VSL_SS_ED_MIN|VSL_SS_ED_MAX|VSL_SS_ED_MEAN|VSL_SS_ED_VARIATION;
-  status = vslsSSCompute(task, estimates, VSL_SS_METHOD_1PASS);
+  status = vsldSSCompute(task, estimates, VSL_SS_METHOD_1PASS);
   
   // step 4. de-allocate task resources
   status = vslSSDeleteTask(&task);
   
-  // writeOutput(pVec1);
+  writeOutput(pVec1);
     
   // free allocated vector arrays
   free(pVec1->arr);

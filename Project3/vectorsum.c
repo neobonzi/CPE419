@@ -17,7 +17,7 @@
 #define DEF_SIZE 2
 
 typedef struct{
-  FLOAT *arr;
+  float *arr;
   int *hist;
   int mmapFileSize;
   char *mmapFileLoc;
@@ -33,7 +33,7 @@ void computeHistogram(Vector *v, int max, int min)
     int vectorIndex = 0;
     int binIndex = 0;
     int spread = max - min;
-    FLOAT binWidth =  ((FLOAT) spread) / NUM_BINS;
+    float binWidth =  ((float) spread) / NUM_BINS;
     
     // Create the bins
     v->hist = malloc(sizeof(int) * NUM_BINS);
@@ -41,7 +41,7 @@ void computeHistogram(Vector *v, int max, int min)
     // set all bins to zero
     memset(v->hist, 0, sizeof(int) * NUM_BINS);
     
-    FLOAT *v1 = v->arr;
+    float *v1 = v->arr;
     int *v2 = v->hist;
     int length = v->size;
     
@@ -193,7 +193,7 @@ void writeHistOutput(Vector *vec, char *fileName){
 void initVectorArray(Vector *vec, int initSize) {
   vec->size = initSize;
 
-  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * vec->size);
+  float *newArray = (float *) malloc(sizeof(float) * vec->size);
 
   if (newArray == NULL) {
     perror("Error, couldn't allocate space for array");
@@ -210,7 +210,7 @@ void initVectorArray(Vector *vec, int initSize) {
 */
 void doubleArraySize(Vector *vec) {
   // malloc new array, double the size of previous array
-  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * vec->size * 2);
+  float *newArray = (float *) malloc(sizeof(float) * vec->size * 2);
 
   if (newArray == NULL) {
     perror("Error, couldn't allocate space for array\n");
@@ -218,7 +218,7 @@ void doubleArraySize(Vector *vec) {
   }
 
   // copy old array to newArray
-  newArray = (FLOAT*) memcpy(newArray, vec->arr, sizeof(FLOAT) * vec->size);
+  newArray = (float*) memcpy(newArray, vec->arr, sizeof(float) * vec->size);
 
   // update size of array
   vec->size *= 2;
@@ -232,12 +232,12 @@ void doubleArraySize(Vector *vec) {
 
 /**
 * Read values from memory mapped location into an array for processing.
-* This function reads in the characters and converts them to FLOATs or doubles
+* This function reads in the characters and converts them to floats or doubles
 * before storing in the array.
 */
 void storeVectorToArray(Vector *vec){
   int mmapIdx = 0, bfrIdx = 0, arrIdx = 0, localSize = 0;
-  char buffer[100];    // buffer to hold FLOAT up to 99 digits long
+  char buffer[100];    // buffer to hold float up to 99 digits long
 
   for(mmapIdx = 0; mmapIdx < vec->mmapFileSize; mmapIdx++) {
     if(vec->mmapFileLoc[mmapIdx] == ' '){ // found a number, store into Vector
@@ -249,8 +249,8 @@ void storeVectorToArray(Vector *vec){
         doubleArraySize(vec);
       }
 
-      // convert char buffer to FLOAT and store in Vector array
-      vec->arr[arrIdx++] = (FLOAT) atof(buffer);
+      // convert char buffer to float and store in Vector array
+      vec->arr[arrIdx++] = (float) atof(buffer);
       
       // increment size variable
       localSize++;
@@ -261,7 +261,7 @@ void storeVectorToArray(Vector *vec){
     } 
 
     /* grab a character at each loop iteration and store into buffer[] to 
-    conv to FLOAT */
+    conv to float */
     buffer[bfrIdx++] = vec->mmapFileLoc[mmapIdx];
   }
   

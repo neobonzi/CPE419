@@ -5,13 +5,13 @@ SRCFILES2=vectoranalyze.c
 all:	vectorsum vectoranalyze
 		
 vectorsum:  $(SRCFILES) 
-	icc -D FLOAT=float $(FLAGS) -o vectorsum $^ 
+	icc $(FLAGS) -o vectorsum $^ 
 
 vectorsum_mic:  $(SRCFILES) 
-	icc -D FLOAT=float -mmic $(FLAGS) -o vectorsum $^  
+	icc -mmic $(FLAGS) -o vectorsum $^  
 
 vectoranalyze:  $(SRCFILES2) 
-	icc -D FLOAT=float $(FLAGS) -o vectoranalyze $^  
+	icc $(FLAGS) -o vectoranalyze $^  
 			
 clean: 
 	rm -f *.o vectorsum vectoranalyze result.out hist.a hist.b hist.c
