@@ -10,12 +10,6 @@
 #include <mkl_vsl.h>
 #include <mkl.h>
 
-// #define NUM_BINS 40.0
-// #define NUM_BINS_SUM 80.0
-// #define MAX_VAL 10.0
-// #define MIN_VAL -10.0
-#define MAX_VAL_SUM 20.0
-// #define MIN_VAL_SUM -20.0
 #define DEF_SIZE 2
 
 typedef struct{
@@ -88,6 +82,24 @@ void writeOutput(Vector *vec){
     exit(1);
   }
 
+  // Minimum value
+  fprintf(ofp, "Minimum value: %.2d\n", vec->min_value);
+  
+  // Maximum value
+  fprintf(ofp, "Maximum value: %.2d\n", vec->max_value);
+  
+  // Mean
+  fprintf(ofp, "Mean: %.2d\n", vec->mean);
+  
+  // Standard Deviation
+  fprintf(ofp, "Standard Deviation: %.2d\n", vec->std_dev);
+  
+  // Median
+  fprintf(ofp, "Median: %.2d\n", vec->median);
+  
+  // output a sorted (ascending order) copy of the array.
+  fprintf(ofp, "Mean: %.2d\n", vec->arr);
+  
   int i;
   for(i = 0; i < vec->size; i++){
     fprintf(ofp, "%.2f ", vec->arr[i]);
@@ -105,30 +117,6 @@ void writeOutput(Vector *vec){
 //   for(i = 0; i < vec->size; i++){
 //     printf("%.2f ", vec->arr[i]);
 //   }
-// }
-
-/**
-* Write results to a file named "results.out"
-* Data in mat is stored row-major order.
-*/
-// void writeHistOutput(Vector *vec, char *fileName){
-//   FILE* ofp;
-//   ofp = fopen(fileName, "w");
-//   if(ofp == NULL) {
-//     perror("Could not open result.out to write results");
-//     exit(1);
-//   }
-// 
-//   int i;
-//   for(i = 0; i < NUM_BINS; i++){
-//     fprintf(ofp, "%d, %d", i, vec->hist[i]);
-//     if (i < NUM_BINS - 1) {
-//       fprintf(ofp, "\n");
-//     }
-//   }
-// 
-//   // close output file pointer
-//   //fclose(ofp);  // this line is causing a segfault, not sure why
 // }
 
 /**
@@ -212,21 +200,19 @@ void storeVectorToArray(Vector *vec){
   vec->size = localSize;
 }
 
-// void errorCheckVectors(Vector *vec1, Vector *vec2){
-//   if (vec1->size != vec2->size){
-//     fprintf(stderr, "Error: vectors are not compatible size\n");
-//     fprintf(stderr, "vec1 size %d, vec2 size %d\n", vec1->size, vec2->size);
-//     exit(1);
-//   }
-// }
+/**
+* Compare function for qsort. 
+* Return val < 0, num1 goes before num2
+* Return val = 0, no change in order
+* Return val < 0, num2 goes before num1
+*/
+int compare(const void *num1, const void *num2){
+  float fnum1 = *(const float*) num1;
+  float fnum2 = *(const float*) num2;
+  return (fnum1 > fnum2) - (fnum1 < fnum2);
+}
 
 int main( int argc, char **argv ) {
-  // exit if not enough arguments
-  if (argc != 1) {
-    fprintf(stderr, "Error: incorrect amount of arguments");
-    exit(1);
-  }
-
   char *file_input = "result.out";
   
   // initialize vector 1 and histogram vec1
@@ -236,10 +222,6 @@ int main( int argc, char **argv ) {
   initVectorArray(pVec1, DEF_SIZE);
   storeVectorToArray(pVec1);
   unmapFile(pVec1);
-
-  // Vector v2;
-  // Vector *pVec2 = &v2;
-  // initVectorArray(pVec2, pVec1->size);
 
   // initialize MKL variables
   VSLSSTaskPtr task;
@@ -274,6 +256,13 @@ int main( int argc, char **argv ) {
   // step 4. de-allocate task resources
   status = vslSSDeleteTask(&task);
   
+  // compute standard deviation using variance & mean
+  pVec1->std_dev = pVec1->covariance * pVec1->mean;
+  
+  // sort array ascending order
+  qsort(pVec1->arr, pVec1->size, sizeof(float), compare);
+  
+  // write output
   writeOutput(pVec1);
     
   // free allocated vector arrays
