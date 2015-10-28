@@ -6,9 +6,11 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <string.h>
+#include <mkl.h>
 #include <math.h>
 
 #define NUM_BINS 40
+// #define NUM_BINS_SUM 80
 #define MAX_VAL 10
 #define MIN_VAL -10
 #define MAX_VAL_SUM 20
@@ -16,7 +18,7 @@
 #define DEF_SIZE 2
 
 typedef struct{
-  FLOAT *arr;
+  float *arr;
   int *hist;
   int mmapFileSize;
   char *mmapFileLoc;
@@ -26,26 +28,26 @@ typedef struct{
 /**
  * Compute histogram for a given vector
  */
-void computeHistogram(Vector *v, int max, int min)
+void computeHistogram(Vector* restrict v, int max, int min)
 {
     // fprintf(stderr, "comp hist for vector size: %d", v->size);
     int vectorIndex = 0;
     int binIndex = 0;
     int spread = max - min;
-    FLOAT binWidth =  ((FLOAT) spread) / NUMBINS;
+    float binWidth =  ((float) spread) / NUM_BINS;
     
     // Create the bins
-    v->hist = malloc(sizeof(int) * NUMBINS);
+    v->hist = malloc(sizeof(int) * NUM_BINS);
     
     // set all bins to zero
-    memset(v->hist, 0, sizeof(int) * NUMBINS);
+    memset(v->hist, 0, sizeof(int) * NUM_BINS);
     
     for(vectorIndex = 0; vectorIndex < v->size; vectorIndex++)
     {
         //Compute bin
         if(v->arr[vectorIndex] == max)
         {
-            v->hist[NUMBINS - 1]++;
+            v->hist[NUM_BINS - 1]++;
         }
         else
         {
@@ -59,11 +61,13 @@ void computeHistogram(Vector *v, int max, int min)
 /**
  * Add two vectors and place the result in an output vector
  */
-void addVectors(Vector *v1, Vector *v2, Vector *out)
+void addVectors(Vector* restrict v1, Vector* restrict v2, Vector* restrict out)
 {
     int vectorIndex;
 
-    #pragma offload target(mic) in(v1:length(v1->size)) in(v2:length(v2->size)) out(out:length(v1->size)) 
+    #pragma offload target(mic) in(v1:length(v1->size)) \
+                                in(v2:length(v2->size)) \
+                                out(out:length(v1->size)) 
     for(vectorIndex = 0; vectorIndex < v1->size; vectorIndex++)
     {
         out->arr[vectorIndex] = v1->arr[vectorIndex] + v2->arr[vectorIndex];
@@ -74,7 +78,7 @@ void addVectors(Vector *v1, Vector *v2, Vector *out)
 * This function will take a filename and map its contents into memory for 
 * faster access.
 */
-int mapFileToMemory(char* fName, Vector *vec){
+int mapFileToMemory(char* restrict fName, Vector* restrict vec){
   int fd, size;
   char *map;
   struct stat st;
@@ -150,7 +154,7 @@ void printVector(Vector *vec) {
 * Write results to a file named "results.out"
 * Data in mat is stored row-major order.
 */
-void writeHistOutput(Vector *vec, char *fileName, int numBins){
+void writeHistOutput(Vector *vec, char *fileName){
   FILE* ofp;
   ofp = fopen(fileName, "w");
   if(ofp == NULL) {
@@ -159,9 +163,9 @@ void writeHistOutput(Vector *vec, char *fileName, int numBins){
   }
 
   int i;
-  for(i = 0; i < numBins; i++){
+  for(i = 0; i < NUM_BINS; i++){
     fprintf(ofp, "%d, %d", i, vec->hist[i]);
-    if (i < numBins - 1) {
+    if (i < NUM_BINS - 1) {
       fprintf(ofp, "\n");
     }
   }
@@ -176,7 +180,7 @@ void writeHistOutput(Vector *vec, char *fileName, int numBins){
 void initVectorArray(Vector *vec, int initSize) {
   vec->size = initSize;
 
-  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * vec->size);
+  float *newArray = (float *) malloc(sizeof(float) * vec->size);
 
   if (newArray == NULL) {
     perror("Error, couldn't allocate space for array");
@@ -193,7 +197,7 @@ void initVectorArray(Vector *vec, int initSize) {
 */
 void doubleArraySize(Vector *vec) {
   // malloc new array, double the size of previous array
-  FLOAT *newArray = (FLOAT *) malloc(sizeof(FLOAT) * vec->size * 2);
+  float *newArray = (float *) malloc(sizeof(float) * vec->size * 2);
 
   if (newArray == NULL) {
     perror("Error, couldn't allocate space for array\n");
@@ -201,7 +205,7 @@ void doubleArraySize(Vector *vec) {
   }
 
   // copy old array to newArray
-  newArray = (FLOAT*) memcpy(newArray, vec->arr, sizeof(FLOAT) * vec->size);
+  newArray = (float*) memcpy(newArray, vec->arr, sizeof(float) * vec->size);
 
   // update size of array
   vec->size *= 2;
@@ -215,12 +219,12 @@ void doubleArraySize(Vector *vec) {
 
 /**
 * Read values from memory mapped location into an array for processing.
-* This function reads in the characters and converts them to FLOATs or doubles
+* This function reads in the characters and converts them to floats or doubles
 * before storing in the array.
 */
 void storeVectorToArray(Vector *vec){
   int mmapIdx = 0, bfrIdx = 0, arrIdx = 0, localSize = 0;
-  char buffer[100];    // buffer to hold FLOAT up to 99 digits long
+  char buffer[100];    // buffer to hold float up to 99 digits long
 
   for(mmapIdx = 0; mmapIdx < vec->mmapFileSize; mmapIdx++) {
     if(vec->mmapFileLoc[mmapIdx] == ' '){ // found a number, store into Vector
@@ -232,8 +236,8 @@ void storeVectorToArray(Vector *vec){
         doubleArraySize(vec);
       }
 
-      // convert char buffer to FLOAT and store in Vector array
-      vec->arr[arrIdx++] = (FLOAT) atof(buffer);
+      // convert char buffer to float and store in Vector array
+      vec->arr[arrIdx++] = (float) atof(buffer);
       
       // increment size variable
       localSize++;
@@ -244,7 +248,7 @@ void storeVectorToArray(Vector *vec){
     } 
 
     /* grab a character at each loop iteration and store into buffer[] to 
-    conv to FLOAT */
+    conv to float */
     buffer[bfrIdx++] = vec->mmapFileLoc[mmapIdx];
   }
   
@@ -291,24 +295,24 @@ int main( int argc, char **argv ) {
   Vector v3;
   Vector *pVec3 = &v3;
   initVectorArray(pVec3, pVec1->size);    // vec sizes must be same at this pt.
-  addVectors(pVec1, pVec2, pVec3);
+  vsAdd(pVec1->size, pVec1->arr, pVec2->arr, pVec3->arr); 
   computeHistogram(pVec3, MAX_VAL_SUM, MIN_VAL_SUM);
   writeOutput(pVec3);
     
   // write histogram output
-  writeHistOutput(pVec1, "hist.a", NUM_BINS);
-  writeHistOutput(pVec2, "hist.b", NUM_BINS);
-  writeHistOutput(pVec3, "hist.c", NUM_BINS);
+  writeHistOutput(pVec1, "hist.a");
+  writeHistOutput(pVec2, "hist.b");
+  writeHistOutput(pVec3, "hist.c");
 
   // free allocated vector arrays
   free(pVec1->arr);
   free(pVec2->arr);
-  // free(pVec3->arr);    // causing segfault for some reason
+  free(pVec3->arr);    // causing segfault for some reason
  
   // free allocated histogram arrays
   free(pVec1->hist);
   free(pVec2->hist);
-  // free(pVec3->hist);   // causing segfault for some reason
+  free(pVec3->hist);   // causing segfault for some reason
 
   return 0;
 }

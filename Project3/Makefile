@@ -1,11 +1,18 @@
-FLAGS=-O3 -g -mmic -debug inline-debug-info
-SRCFILES=main.c
+FLAGS=-O3 -qopt-report=3 -restrict -g -mkl -debug inline-debug-info -qopenmp
+SRCFILES=vectorsum.c 
+SRCFILES2=vectoranalyze.c
 
-all:	vectorsum
+all:	vectorsum vectoranalyze
 		
 vectorsum:  $(SRCFILES) 
-	icc -D FLOAT=float $(FLAGS) -o vectorsum $^ 
- 
+	icc $(FLAGS) -o vectorsum $^ 
+
+# vectorsum_mic:  $(SRCFILES) 
+# 	icc -mmic $(FLAGS) -o vectorsum $^  
+
+vectoranalyze:  $(SRCFILES2) 
+	icc $(FLAGS) -o vectoranalyze $^  
+			
 clean: 
-	rm -f *.o vectorsum
+	rm -f *.o vectorsum vectoranalyze result.out hist.a hist.b hist.c analyze.out
 

@@ -1,0 +1,307 @@
+Intel(R) Advisor can now assist with vectorization and show optimization
+  report messages with your source code.
+See "https://software.intel.com/en-us/intel-advisor-xe" for details.
+
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINING OPTION VALUES:
+  -inline-factor: 100
+  -inline-min-size: 30
+  -inline-max-size: 230
+  -inline-max-total-size: 2000
+  -inline-max-per-routine: 10000
+  -inline-max-per-compile: 500000
+
+
+Begin optimization report for: main(int, char **)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (main(int, char **)) [1] vectoranalyze.c(245,35)
+  -> INLINE: (251,3) mapFileToMemory(char *, Vector *)
+    -> INLINE (MANUAL): (37,3) stat(const char *, struct stat *)
+      -> EXTERN: /usr/include/sys/stat.h:(457,10) __xstat(int, const char *, struct stat *)
+    -> EXTERN: (41,8) open(const char *, int, ...)
+    -> EXTERN: (43,5) perror(const char *)
+    -> EXTERN: (44,5) close(int)
+    -> EXTERN: (45,5) exit(int)
+    -> EXTERN: (48,17) mmap(void *, size_t, int, int, int, __off_t)
+    -> EXTERN: (50,5) perror(const char *)
+    -> EXTERN: (51,5) close(int)
+    -> EXTERN: (52,5) exit(int)
+    -> EXTERN: (57,3) close(int)
+  -> INLINE: (252,3) initVectorArray(Vector *, int)
+    -> EXTERN: (129,33) malloc(size_t)
+    -> EXTERN: (132,5) perror(const char *)
+    -> EXTERN: (133,5) exit(int)
+  -> INLINE: (253,3) storeVectorToArray(Vector *)
+    -> INLINE: (182,9) doubleArraySize(Vector *)
+      -> EXTERN: (146,33) malloc(size_t)
+      -> EXTERN: (149,5) perror(const char *)
+      -> EXTERN: (150,5) exit(int)
+      -> EXTERN: (154,24) memcpy(void *__restrict__, const void *__restrict__, size_t)
+      -> EXTERN: (160,3) free(void *)
+    -> INLINE (MANUAL): (186,37) atof(const char *)
+      -> EXTERN: /usr/include/stdlib.h:(281,10) strtod(const char *__restrict__, char **__restrict__)
+    -> EXTERN: (192,7) memset(void *, int, size_t)
+  -> INLINE: (254,3) unmapFile(Vector *)
+    -> EXTERN: (65,7) munmap(void *, size_t)
+    -> EXTERN: (66,4) perror(const char *)
+    -> EXTERN: (67,4) exit(int)
+  -> EXTERN: (264,12) vsldSSNewTask(VSLSSTaskPtr *, const int *, const int *, const int *, const double *, const double *, const int *)
+  -> EXTERN: (267,12) vsldSSEditTask(VSLSSTaskPtr, const int, const double *)
+  -> EXTERN: (268,12) vsldSSEditTask(VSLSSTaskPtr, const int, const double *)
+  -> EXTERN: (269,12) vsldSSEditTask(VSLSSTaskPtr, const int, const double *)
+  -> EXTERN: (273,12) vsldSSCompute(VSLSSTaskPtr, const unsigned long long, const int)
+  -> EXTERN: (276,12) vslSSDeleteTask(VSLSSTaskPtr *)
+  -> INLINE: (279,3) calcStandardDeviation(Vector *)
+    -> EXTERN: (225,12) pow(double, double)
+  -> EXTERN: (282,3) qsort(void *, size_t, size_t, __compar_fn_t)
+  -> INLINE: (285,3) findMedian(Vector *)
+  -> INLINE: (288,3) writeOutput(Vector *)
+    -> EXTERN: (79,9) fopen(const char *__restrict__, const char *__restrict__)
+    -> EXTERN: (81,5) perror(const char *)
+    -> EXTERN: (82,5) exit(int)
+    -> EXTERN: (86,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+    -> EXTERN: (89,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+    -> EXTERN: (92,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+    -> EXTERN: (95,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+    -> EXTERN: (98,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+    -> EXTERN: (101,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+    -> EXTERN: (104,5) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+    -> EXTERN: (107,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+    -> EXTERN: (110,3) fclose(FILE *)
+  -> EXTERN: (291,3) free(void *)
+
+
+    Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
+
+
+LOOP BEGIN at vectoranalyze.c(175,3) inlined into vectoranalyze.c(253,3)
+   remark #15523: loop was not vectorized: loop control variable mmapIdx was found, but loop iteration count cannot be computed before executing the loop
+LOOP END
+
+LOOP BEGIN at vectoranalyze.c(224,3) inlined into vectoranalyze.c(279,3)
+<Peeled loop for vectorization>
+LOOP END
+
+LOOP BEGIN at vectoranalyze.c(224,3) inlined into vectoranalyze.c(279,3)
+   remark #15300: LOOP WAS VECTORIZED
+   remark #15442: entire loop may be executed in remainder
+   remark #15448: unmasked aligned unit stride loads: 1 
+   remark #15475: --- begin vector loop cost summary ---
+   remark #15476: scalar loop cost: 15 
+   remark #15477: vector loop cost: 6.500 
+   remark #15478: estimated potential speedup: 2.150 
+   remark #15488: --- end vector loop cost summary ---
+LOOP END
+
+LOOP BEGIN at vectoranalyze.c(224,3) inlined into vectoranalyze.c(279,3)
+<Remainder loop for vectorization>
+   remark #15301: REMAINDER LOOP WAS VECTORIZED
+LOOP END
+
+LOOP BEGIN at vectoranalyze.c(224,3) inlined into vectoranalyze.c(279,3)
+<Remainder loop for vectorization>
+LOOP END
+
+LOOP BEGIN at vectoranalyze.c(103,3) inlined into vectoranalyze.c(288,3)
+   remark #15527: loop was not vectorized: function call to fprintf(FILE *__restrict__, const char *__restrict__, ...) cannot be vectorized   [ vectoranalyze.c(104,5) ]
+LOOP END
+
+    Report from: Code generation optimizations [cg]
+
+vectoranalyze.c(192,7):remark #34026: call to memset implemented as a call to optimized library version
+vectoranalyze.c(154,24):remark #34014: optimization advice for memcpy: increase the destination's alignment to 16 (and use __assume_aligned) to speed up library implementation
+vectoranalyze.c(154,24):remark #34014: optimization advice for memcpy: increase the source's alignment to 16 (and use __assume_aligned) to speed up library implementation
+vectoranalyze.c(154,24):remark #34026: call to memcpy implemented as a call to optimized library version
+===========================================================================
+
+Begin optimization report for: mapFileToMemory(char *, Vector *)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (mapFileToMemory(char *, Vector *)) [4] vectoranalyze.c(32,46)
+  -> INLINE (MANUAL): (37,3) stat(const char *, struct stat *)
+    -> EXTERN: /usr/include/sys/stat.h:(457,10) __xstat(int, const char *, struct stat *)
+  -> EXTERN: (41,8) open(const char *, int, ...)
+  -> EXTERN: (43,5) perror(const char *)
+  -> EXTERN: (44,5) close(int)
+  -> EXTERN: (45,5) exit(int)
+  -> EXTERN: (48,17) mmap(void *, size_t, int, int, int, __off_t)
+  -> EXTERN: (50,5) perror(const char *)
+  -> EXTERN: (51,5) close(int)
+  -> EXTERN: (52,5) exit(int)
+  -> EXTERN: (57,3) close(int)
+
+===========================================================================
+
+Begin optimization report for: unmapFile(Vector *)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (unmapFile(Vector *)) [5] vectoranalyze.c(64,27)
+  -> EXTERN: (65,7) munmap(void *, size_t)
+  -> EXTERN: (66,4) perror(const char *)
+  -> EXTERN: (67,4) exit(int)
+
+===========================================================================
+
+Begin optimization report for: writeOutput(Vector *)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (writeOutput(Vector *)) [6] vectoranalyze.c(77,30)
+  -> EXTERN: (79,9) fopen(const char *__restrict__, const char *__restrict__)
+  -> EXTERN: (81,5) perror(const char *)
+  -> EXTERN: (82,5) exit(int)
+  -> EXTERN: (86,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+  -> EXTERN: (89,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+  -> EXTERN: (92,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+  -> EXTERN: (95,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+  -> EXTERN: (98,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+  -> EXTERN: (101,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+  -> EXTERN: (104,5) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+  -> EXTERN: (107,3) fprintf(FILE *__restrict__, const char *__restrict__, ...)
+  -> EXTERN: (110,3) fclose(FILE *)
+
+
+    Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
+
+
+LOOP BEGIN at vectoranalyze.c(103,3)
+   remark #15523: loop was not vectorized: loop control variable i was found, but loop iteration count cannot be computed before executing the loop
+   remark #25456: Number of Array Refs Scalar Replaced In Loop: 1
+LOOP END
+===========================================================================
+
+Begin optimization report for: printVector(Vector *)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (printVector(Vector *)) [7] vectoranalyze.c(116,31)
+  -> EXTERN: (119,5) printf(const char *__restrict__, ...)
+
+
+    Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
+
+
+LOOP BEGIN at vectoranalyze.c(118,3)
+   remark #15523: loop was not vectorized: loop control variable i was found, but loop iteration count cannot be computed before executing the loop
+   remark #25456: Number of Array Refs Scalar Replaced In Loop: 1
+LOOP END
+===========================================================================
+
+Begin optimization report for: doubleArraySize(Vector *)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (doubleArraySize(Vector *)) [8] vectoranalyze.c(144,35)
+  -> EXTERN: (146,33) malloc(size_t)
+  -> EXTERN: (149,5) perror(const char *)
+  -> EXTERN: (150,5) exit(int)
+  -> EXTERN: (154,24) memcpy(void *__restrict__, const void *__restrict__, size_t)
+  -> EXTERN: (160,3) free(void *)
+
+
+    Report from: Code generation optimizations [cg]
+
+vectoranalyze.c(154,24):remark #34014: optimization advice for memcpy: increase the destination's alignment to 16 (and use __assume_aligned) to speed up library implementation
+vectoranalyze.c(154,24):remark #34014: optimization advice for memcpy: increase the source's alignment to 16 (and use __assume_aligned) to speed up library implementation
+vectoranalyze.c(154,24):remark #34026: call to memcpy implemented as a call to optimized library version
+===========================================================================
+
+Begin optimization report for: storeVectorToArray(Vector *)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (storeVectorToArray(Vector *)) [9] vectoranalyze.c(171,37)
+  -> INLINE: (182,9) doubleArraySize(Vector *)
+    -> EXTERN: (146,33) malloc(size_t)
+    -> EXTERN: (149,5) perror(const char *)
+    -> EXTERN: (150,5) exit(int)
+    -> EXTERN: (154,24) memcpy(void *__restrict__, const void *__restrict__, size_t)
+    -> EXTERN: (160,3) free(void *)
+  -> INLINE (MANUAL): (186,37) atof(const char *)
+    -> EXTERN: /usr/include/stdlib.h:(281,10) strtod(const char *__restrict__, char **__restrict__)
+  -> EXTERN: (192,7) memset(void *, int, size_t)
+
+
+    Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
+
+
+LOOP BEGIN at vectoranalyze.c(175,3)
+   remark #15523: loop was not vectorized: loop control variable mmapIdx was found, but loop iteration count cannot be computed before executing the loop
+LOOP END
+
+    Report from: Code generation optimizations [cg]
+
+vectoranalyze.c(192,7):remark #34026: call to memset implemented as a call to optimized library version
+vectoranalyze.c(154,24):remark #34014: optimization advice for memcpy: increase the destination's alignment to 16 (and use __assume_aligned) to speed up library implementation
+vectoranalyze.c(154,24):remark #34014: optimization advice for memcpy: increase the source's alignment to 16 (and use __assume_aligned) to speed up library implementation
+vectoranalyze.c(154,24):remark #34026: call to memcpy implemented as a call to optimized library version
+===========================================================================
+
+Begin optimization report for: findMedian(Vector *)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (findMedian(Vector *)) [10] vectoranalyze.c(204,30)
+
+===========================================================================
+
+Begin optimization report for: calcStandardDeviation(Vector *)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (calcStandardDeviation(Vector *)) [11] vectoranalyze.c(218,41)
+  -> EXTERN: (225,12) pow(double, double)
+
+
+    Report from: Loop nest, Vector & Auto-parallelization optimizations [loop, vec, par]
+
+
+LOOP BEGIN at vectoranalyze.c(224,3)
+<Peeled loop for vectorization>
+LOOP END
+
+LOOP BEGIN at vectoranalyze.c(224,3)
+   remark #15300: LOOP WAS VECTORIZED
+   remark #15442: entire loop may be executed in remainder
+   remark #15448: unmasked aligned unit stride loads: 1 
+   remark #15475: --- begin vector loop cost summary ---
+   remark #15476: scalar loop cost: 15 
+   remark #15477: vector loop cost: 6.500 
+   remark #15478: estimated potential speedup: 2.150 
+   remark #15488: --- end vector loop cost summary ---
+LOOP END
+
+LOOP BEGIN at vectoranalyze.c(224,3)
+<Remainder loop for vectorization>
+   remark #15301: REMAINDER LOOP WAS VECTORIZED
+LOOP END
+
+LOOP BEGIN at vectoranalyze.c(224,3)
+<Remainder loop for vectorization>
+LOOP END
+===========================================================================
+
+Begin optimization report for: compare(const void *, const void *)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (compare(const void *, const void *)) [12] vectoranalyze.c(239,48)
+
+===========================================================================
+
+Begin optimization report for: initVectorArray(Vector *, int)
+
+    Report from: Interprocedural optimizations [ipo]
+
+INLINE REPORT: (initVectorArray(Vector *, int)) [13] vectoranalyze.c(126,49)
+  -> EXTERN: (129,33) malloc(size_t)
+  -> EXTERN: (132,5) perror(const char *)
+  -> EXTERN: (133,5) exit(int)
+
+===========================================================================
