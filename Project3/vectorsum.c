@@ -10,7 +10,6 @@
 #include <math.h>
 
 #define NUM_BINS 40
-// #define NUM_BINS_SUM 80
 #define MAX_VAL 10
 #define MIN_VAL -10
 #define MAX_VAL_SUM 20
