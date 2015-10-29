@@ -6,3 +6,5 @@ hist.b
 hist.c
 result.out
 unused.c
+analyze.out
+*.optrpt
