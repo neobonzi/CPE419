@@ -10,7 +10,6 @@
 #include <math.h>
 
 #define NUM_BINS 40
-// #define NUM_BINS_SUM 80
 #define MAX_VAL 10
 #define MIN_VAL -10
 #define MAX_VAL_SUM 20
@@ -42,29 +41,19 @@ void computeHistogram(Vector* restrict v, int max, int min)
     // set all bins to zero
     memset(v->hist, 0, sizeof(int) * NUM_BINS);
     
-    float *v1 = v->arr;
-    int *v2 = v->hist;
-    int length = v->size;
-    
-    // int num_coprocs = _Offload_number_of_devices();
-    
-      #pragma offload target(mic) in(v1:length(v->size)) \
-                                 inout(v2:length(NUM_BINS)) \
-                                 in(length) 
-      for(vectorIndex = 0; vectorIndex < length; vectorIndex++)
-      {
-          //Compute bin
-          if(v1[vectorIndex] == max)
-          {
-              v2[NUM_BINS - 1]++;
-          }
-          else
-          {
-              binIndex = (v1[vectorIndex] - min) / binWidth;
-              v2[binIndex]++;
-          }
-      }
-  //  }
+    for(vectorIndex = 0; vectorIndex < v->size; vectorIndex++)
+    {
+        //Compute bin
+        if(v->arr[vectorIndex] == max)
+        {
+            v->hist[NUM_BINS - 1]++;
+        }
+        else
+        {
+            binIndex = (v->arr[vectorIndex] - min) / binWidth;
+            v->hist[binIndex]++;
+        }
+    }
 }
 
 
@@ -305,7 +294,6 @@ int main( int argc, char **argv ) {
   Vector v3;
   Vector *pVec3 = &v3;
   initVectorArray(pVec3, pVec1->size);    // vec sizes must be same at this pt.
-  //addVectors(pVec1, pVec2, pVec3);
   vsAdd(pVec1->size, pVec1->arr, pVec2->arr, pVec3->arr); 
   computeHistogram(pVec3, MAX_VAL_SUM, MIN_VAL_SUM);
   writeOutput(pVec3);
