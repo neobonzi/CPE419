@@ -24,7 +24,7 @@ call(['diff','hist.b', 'output/hist.b'])
 #call(['rm','hist.b'])
 
 print "Comparing output for hist.c"
-call(['diff','hist.c', 'output/hist.c'])
+#call(['diff','hist.c', 'output/hist.c'])
 #call(['rm','hist.c'])
 
 print

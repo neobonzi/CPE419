@@ -9,6 +9,7 @@
 #include <math.h>
 #include <mkl_vsl.h>
 #include <mkl.h>
+#include <sys/time.h>
 
 #define DEF_SIZE 2
 
@@ -23,13 +24,19 @@ typedef struct{
   double std_dev;
   double median;
   double covariance;
+  double time_min;
+  double time_max;
+  double time_mean;
+  double time_dev;
+  double time_median;
+  double time_sort;
 } Vector;
 
 /**
 * This function will take a filename and map its contents into memory for 
 * faster access.
 */
-int mapFileToMemory(char* fName, Vector *vec){
+void mapFileToMemory(char* fName, Vector *vec){
   int fd, size;
   char *map;
   struct stat st;
@@ -55,19 +62,16 @@ int mapFileToMemory(char* fName, Vector *vec){
   vec->mmapFileLoc = map;
 
   close(fd);
-  return  0;
 }
 
 /**
 * This function will un-map a file that was previously mapped into memory.
 */
-int unmapFile(Vector *vec){
+void unmapFile(Vector *vec){
   if (munmap(vec->mmapFileLoc, vec->mmapFileSize) == -1) {
   	perror("Error un-mapping the file");
   	exit(1);
   }
-
-  return 0;
 }
 
 /**
@@ -201,7 +205,26 @@ void storeVectorToArray(Vector *vec){
   vec->size = localSize;
 }
 
+/**
+*
+*/
+void storeTime(double *time, struct timeval t1, struct timeval t2){
+  // compute and print the elapsed time in millisec
+  double elapsed_time = 0.0;
+  // elapsed_time = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+  // elapsed_time += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+  
+  elapsed_time = ((double) (t2.tv_usec - t1.tv_usec) / 1000000) + 
+                 (double) (t2.tv_sec - t1.tv_sec);
+  *time = elapsed_time;
+}
+
+/**
+*
+*/
 void findMedian(Vector *vec) {
+  struct timeval t1, t2;
+  gettimeofday(&t1, NULL);  
   int size = vec->size;
   // find the median value of vec->arr
   if (size % 2 == 1) {
@@ -213,14 +236,23 @@ void findMedian(Vector *vec) {
     int idx2 = idx1 - 1;
     vec->median = (vec->arr[idx1] + vec->arr[idx2]) / 2;
   }
+  gettimeofday(&t2, NULL);
+  storeTime(&(vec->time_median), t1, t2);  
 }
 
+/**
+*
+*/
 void calcStandardDeviation(Vector *vec) {
+  struct timeval t1, t2;
+  gettimeofday(&t1, NULL);
   // create temp array to hold interim values
   double sum = 0.0;
 
   // calculate the sum of all (arr[i] - mean) ^2
   int i;
+  #pragma omp parallel for
+  #pragma simd
   for (i = 0; i < vec->size; i++) {
     sum += pow(vec->arr[i] - vec->mean, 2);
   }
@@ -228,6 +260,65 @@ void calcStandardDeviation(Vector *vec) {
   // take square root of ( sum / size - 1)
   double frac = sum / (vec->size - 1);
   vec->std_dev = sqrt(frac);
+  gettimeofday(&t2, NULL);
+  storeTime(&(vec->time_dev), t1, t2);
+}
+
+/**
+*
+*/
+void findMin(Vector *vec){
+  struct timeval t1, t2;
+  gettimeofday(&t1, NULL);
+  VSLSSTaskPtr task;
+  MKL_INT num_tasks = 1;
+  MKL_INT obs_size = vec->size;
+  MKL_INT xstorage = VSL_SS_MATRIX_STORAGE_ROWS;
+  int status;
+  status = vsldSSNewTask(&task, &num_tasks, &obs_size, &xstorage, vec->arr, 0, 0);
+  status = vsldSSEditTask(task, VSL_SS_ED_MIN, &(vec->min_value));
+  status = vsldSSCompute(task, VSL_SS_MIN, VSL_SS_METHOD_1PASS);
+  status = vslSSDeleteTask(&task);
+  gettimeofday(&t2, NULL);
+  storeTime(&(vec->time_min), t1, t2);
+}
+
+/**
+*
+*/
+void findMax(Vector *vec){
+  struct timeval t1, t2;
+  gettimeofday(&t1, NULL);  
+  VSLSSTaskPtr task;
+  MKL_INT num_tasks = 1;
+  MKL_INT obs_size = vec->size;
+  MKL_INT xstorage = VSL_SS_MATRIX_STORAGE_ROWS;
+  int status;
+  status = vsldSSNewTask(&task, &num_tasks, &obs_size, &xstorage, vec->arr, 0, 0);
+  status = vsldSSEditTask(task, VSL_SS_ED_MAX, &(vec->max_value));
+  status = vsldSSCompute(task, VSL_SS_MAX, VSL_SS_METHOD_1PASS);
+  status = vslSSDeleteTask(&task);
+  gettimeofday(&t2, NULL);
+  storeTime(&(vec->time_max), t1, t2);  
+}
+
+/**
+*
+*/
+void findMean(Vector *vec){
+  struct timeval t1, t2;
+  gettimeofday(&t1, NULL);    
+  VSLSSTaskPtr task;
+  MKL_INT num_tasks = 1;
+  MKL_INT obs_size = vec->size;
+  MKL_INT xstorage = VSL_SS_MATRIX_STORAGE_ROWS;
+  int status;
+  status = vsldSSNewTask(&task, &num_tasks, &obs_size, &xstorage, vec->arr, 0, 0);
+  status = vsldSSEditTask(task, VSL_SS_ED_MEAN, &(vec->mean));
+  status = vsldSSCompute(task, VSL_SS_MEAN, VSL_SS_METHOD_1PASS);
+  status = vslSSDeleteTask(&task);
+  gettimeofday(&t2, NULL);
+  storeTime(&(vec->time_mean), t1, t2);   
 }
 
 /**
@@ -242,6 +333,20 @@ int compare(const void *num1, const void *num2){
   return (fnum1 > fnum2) - (fnum1 < fnum2);
 }
 
+/**
+*
+*/
+void sortAscending(Vector *vec) {
+  struct timeval t1, t2;
+  gettimeofday(&t1, NULL);  
+  qsort(vec->arr, vec->size, sizeof(double), compare);  
+  gettimeofday(&t2, NULL);
+  storeTime(&(vec->time_sort), t1, t2);   
+}
+
+/**
+*
+*/
 int main( int argc, char **argv ) {
   char *file_input = "input/result1.in";
   
@@ -253,34 +358,21 @@ int main( int argc, char **argv ) {
   storeVectorToArray(pVec1);
   unmapFile(pVec1);
 
-  // initialize MKL variables
-  VSLSSTaskPtr task;
-  MKL_INT num_tasks = 1;
-  MKL_INT obs_size = pVec1->size;
-  MKL_INT xstorage = VSL_SS_MATRIX_STORAGE_ROWS;
-  int status;
-    
-  // Step 1. create the task
-  status = vsldSSNewTask(&task, &num_tasks, &obs_size, &xstorage, pVec1->arr, 0, 0);
-      
-  // Step 2. edit task parameters
-  status = vsldSSEditTask(task, VSL_SS_ED_MIN, &(pVec1->min_value));
-  status = vsldSSEditTask(task, VSL_SS_ED_MAX, &(pVec1->max_value));
-  status = vsldSSEditTask(task, VSL_SS_ED_MEAN, &(pVec1->mean));
+  // find the min
+  findMin(pVec1);
   
-  // step 3. computation of serveral estimates using 1PASS method
-  MKL_INT64 estimates = VSL_SS_MIN|VSL_SS_MAX|VSL_SS_MEAN;
-  status = vsldSSCompute(task, estimates, VSL_SS_METHOD_1PASS);
+  // find the max
+  findMax(pVec1);
   
-  // step 4. de-allocate task resources
-  status = vslSSDeleteTask(&task);
+  // find the mean
+  findMean(pVec1);
   
-  // compute standard deviation using variance & mean
+  // calc standard deviation
   calcStandardDeviation(pVec1);
   
   // sort array ascending order
-  qsort(pVec1->arr, pVec1->size, sizeof(double), compare);
-  
+  sortAscending(pVec1);
+
   // find the median after sorting the array
   findMedian(pVec1);
   
